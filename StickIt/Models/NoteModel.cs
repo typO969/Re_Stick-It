@@ -14,7 +14,7 @@ namespace StickIt.Models
 		private string _title = "Untitled";
 		public string Title
 		{
-			get => _title;	
+			get => _title;
 			set { _title = value; OnPropertyChanged(); }
 		}
 
@@ -24,9 +24,10 @@ namespace StickIt.Models
 			get => _colorKey;
 			set
 			{
+				if (_colorKey == value) return;
 				_colorKey = value;
-				OnPropertyChanged();
-				OnPropertyChanged(nameof(PaperBrush));
+				OnPropertyChanged();                 // ColorKey
+				OnPropertyChanged(nameof(PaperBrush)); // PaperBrush must refresh too
 			}
 		}
 
@@ -35,7 +36,7 @@ namespace StickIt.Models
 			get
 			{
 				var hex = NoteColors.Hex[ColorKey];
-				return (System.Windows.Media.SolidColorBrush)(new BrushConverter().ConvertFromString(hex)!);
+				return (SolidColorBrush) (new BrushConverter().ConvertFromString(hex)!);
 			}
 		}
 

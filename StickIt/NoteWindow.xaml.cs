@@ -1,5 +1,7 @@
+using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 using StickIt.Models;
 using StickIt.Services;
@@ -16,26 +18,52 @@ namespace StickIt
 			_note = note;
 			DataContext = _note;
 
-			TitleBar.MouseLeftButtonDown += (_, __) => DragMove();
-
-			// Right-click menu
-			ContextMenu = BuildContextMenu();
+			ControlBar.MouseLeftButtonDown += (_, __) => DragMove();
 		}
 
-		private ContextMenu BuildContextMenu()
+		private void ColorMenuItem_Click(object sender, RoutedEventArgs e)
 		{
-			var menu = new ContextMenu();
+			if (sender is not MenuItem menuItem)
+				return;
 
-			var colors = new MenuItem { Header = "Color" };
-			foreach (var kv in NoteColors.Hex)
-			{
-				var item = new MenuItem { Header = $"{kv.Key} ({kv.Value})" };
-				item.Click += (_, __) => _note.ColorKey = kv.Key;
-				colors.Items.Add(item);
-			}
-
-			menu.Items.Add(colors);
-			return menu;
+			if (menuItem.Tag is string tag && Enum.TryParse(tag, out NoteColors.NoteColor color))
+				_note.ColorKey = color;
 		}
-	}
+
+		private void btnClose_Click(object sender, RoutedEventArgs e)
+		{
+			this.Close();
+		}
+  
+		private void btnMinimize_Click(object sender, RoutedEventArgs e)
+		{
+			WindowState = WindowState.Minimized;
+		}
+
+		private void txtNoteTitle_GotFocus(object sender, RoutedEventArgs e)
+		{
+			// Add your logic here, or leave empty if not needed
+		}
+
+		private void txtNoteTitle_LostFocus(object sender, RoutedEventArgs e)
+		{
+			// Add logic here if needed, or leave empty if not required
+		}
+
+		private void txtNoteContent_GotFocus(object sender, RoutedEventArgs e)
+		{
+			// Add your logic here if needed, or leave empty if not required
+		}
+
+		private void txtNoteContent_LostFocus(object sender, RoutedEventArgs e)
+		{
+			// TODO: Add logic to handle when the RichTextBox loses focus, if needed.
+		}
+
+        private void Note_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            // You can implement logic here, for example, to focus the RichTextBox or handle drag, etc.
+            // For now, this is a placeholder to resolve the event handler error.
+        }
+    }
 }
