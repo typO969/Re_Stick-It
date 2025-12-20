@@ -12,8 +12,8 @@ namespace StickIt.Services
             Poppy,
             Saffron,
             Curry,
-            ThreeMYellow,
-            CanaryYellow,
+            ThreeMYellow,        // this is the default color
+				CanaryYellow,
             NeonGreen,
             Asparagus,
             Emerald,
