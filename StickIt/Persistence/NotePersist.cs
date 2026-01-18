@@ -27,12 +27,17 @@ namespace StickIt.Persistence
 		public string FontFamily { get; set; } = "Segoe UI";
 		public double FontSize { get; set; } = 14.0;
 
+		public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
+		public DateTime ModifiedUtc { get; set; } = DateTime.UtcNow;
+
+		public int StickyMode { get; set; } = 0;       // your StuckMode
+		public string? StickyTarget { get; set; } = null;
+
+		public bool IsMinimized { get; set; } = false; // already present; keep one canonical field
+
 
 		// 0 = not stuck, 1 = always-on-top, 2 = stuck-to-program (future)
 		public int StuckMode { get; set; } = 0;
-
-		// Persist minimized state
-		public bool IsMinimized { get; set; } = false;
 
 		// Optional placeholder for future “stuck to program” targeting (safe to ignore for now)
 		public string? StuckTarget { get; set; } = null;

@@ -54,62 +54,21 @@
 			</Setter>
 		</Style>
 
+		<DataTemplate x:Key="ColorSwatchIconTemplate">
+			<Border
+				Width="12"
+				Height="12"
+				Background="{Binding}"
+				BorderBrush="#66000000"
+				BorderThickness="1"
+				CornerRadius="2" />
+		</DataTemplate>
+
+		<conv:ColorKeyToBackgroundBrushConverter x:Key="ColorKeyToBgBrush" />
+
 	</Window.Resources>
 
-	<Window.ContextMenu>
-		<ContextMenu>
-			<MenuItem Header="Color">
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Neon Pink"
-					Tag="NeonPink" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Mulberry"
-					Tag="Mulberry" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Fireball Fuchsia"
-					Tag="FireballFuchsia" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Poppy"
-					Tag="Poppy" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Saffron"
-					Tag="Saffron" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Curry"
-					Tag="Curry" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="3M Yellow"
-					Tag="ThreeMYellow" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Canary Yellow"
-					Tag="CanaryYellow" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Neon Green"
-					Tag="NeonGreen" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Asparagus"
-					Tag="Asparagus" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Emerald"
-					Tag="Emerald" />
-				<MenuItem
-					Click="ColorMenuItem_Click"
-					Header="Mediterranean Blue"
-					Tag="MediterraneanBlue" />
-			</MenuItem>
-		</ContextMenu>
-	</Window.ContextMenu>
+
 
 	<Border
 		Padding="0"
@@ -117,6 +76,234 @@
 		BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
 		BorderThickness="1"
 		CornerRadius="1">
+
+		<Border.ContextMenu>
+			<ContextMenu Opened="NoteMenu_Opened">
+
+				<!--  Lifecycle  -->
+				<MenuItem Click="Menu_NewNote" Header="Add note" />
+				<MenuItem Click="Menu_Delete" Header="Remove note" />
+
+				<Separator />
+
+				<!--  Color  -->
+				<MenuItem Header="Note colors">
+					<MenuItem
+						x:Name="NeonPinkMenuItem"
+						Click="Menu_Color"
+						Header="Neon Pink"
+						Tag="NeonPink">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="MulberryMenuItem"
+						Click="Menu_Color"
+						Header="Mulberry"
+						Tag="Mulberry">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="FireballFuchsiaMenuItem"
+						Click="Menu_Color"
+						Header="Fireball Fuchsia"
+						Tag="FireballFuchsia">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="PoppyMenuItem"
+						Click="Menu_Color"
+						Header="Poppy"
+						Tag="Poppy">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="SaffronMenuItem"
+						Click="Menu_Color"
+						Header="Saffron"
+						Tag="Saffron">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="CurryMenuItem"
+						Click="Menu_Color"
+						Header="Curry"
+						Tag="Curry">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="ThreeMYellowMenuItem"
+						Click="Menu_Color"
+						Header="3M Yellow (Default)"
+						Tag="ThreeMYellow">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="CanaryYellowMenuItem"
+						Click="Menu_Color"
+						Header="Canary Yellow"
+						Tag="CanaryYellow">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="NeonGreenMenuItem"
+						Click="Menu_Color"
+						Header="Neon Green"
+						Tag="NeonGreen">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="AsparagusMenuItem"
+						Click="Menu_Color"
+						Header="Asparagus"
+						Tag="Asparagus">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="EmeraldMenuItem"
+						Click="Menu_Color"
+						Header="Emerald"
+						Tag="Emerald">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+					<MenuItem
+						x:Name="MediterraneanBlueMenuItem"
+						Click="Menu_Color"
+						Header="Mediterranean Blue"
+						Tag="MediterraneanBlue">
+						<MenuItem.Icon>
+							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+						</MenuItem.Icon>
+					</MenuItem>
+				</MenuItem>
+
+				<!--  Font  -->
+				<MenuItem
+					Click="Menu_FontSettings"
+					Header="Font settings..."
+					IsEnabled="False" />
+
+				<!--  Properties  -->
+				<MenuItem Header="Note properties">
+					<!--  These are populated on open  -->
+					<MenuItem
+						x:Name="miProp_Id"
+						Header="Note ID:"
+						IsEnabled="False" />
+					<MenuItem
+						x:Name="miProp_Contains"
+						Header="Contains:"
+						IsEnabled="False" />
+					<MenuItem
+						x:Name="miProp_Created"
+						Header="Created:"
+						IsEnabled="False" />
+					<MenuItem
+						x:Name="miProp_Modified"
+						Header="Modified:"
+						IsEnabled="False" />
+					<Separator />
+					<MenuItem
+						x:Name="miProp_Position"
+						Header="Position:"
+						IsEnabled="False" />
+					<MenuItem
+						x:Name="miProp_Color"
+						Header="Color:"
+						IsEnabled="False" />
+					<MenuItem
+						x:Name="miProp_Sticky"
+						Header="Sticky:"
+						IsEnabled="False" />
+					<MenuItem
+						x:Name="miProp_Font"
+						Header="Font:"
+						IsEnabled="False" />
+				</MenuItem>
+
+				<Separator />
+
+				<!--  Editing  -->
+				<MenuItem Click="Menu_Cut" Header="Cut" />
+				<MenuItem Click="Menu_Copy" Header="Copy" />
+				<MenuItem Click="Menu_Paste" Header="Paste" />
+
+				<Separator />
+
+				<!--  Save/Load (note: you already autosave, but keep these for parity)  -->
+				<MenuItem Click="Menu_SaveNow" Header="Save notes now" />
+				<MenuItem
+					Click="Menu_LoadNotes"
+					Header="Load notes..."
+					IsEnabled="False" />
+
+				<Separator />
+
+				<!--  Window state  -->
+				<MenuItem Click="Menu_Minimize" Header="Minimize" />
+				<MenuItem Click="Menu_Restore" Header="Restore" />
+				<MenuItem Click="Menu_MinimizeAll" Header="Minimize all notes" />
+				<MenuItem Click="Menu_RestoreAll" Header="Restore hidden notes" />
+
+				<Separator />
+
+				<!--  Sticky  -->
+				<MenuItem Header="Sticky mode">
+					<MenuItem
+						Click="Menu_Sticky"
+						Header="Not stuck"
+						Tag="0" />
+					<MenuItem
+						Click="Menu_Sticky"
+						Header="Always on top"
+						Tag="1" />
+					<MenuItem Header="Stick to application (future)" IsEnabled="False" />
+				</MenuItem>
+
+				<Separator />
+
+				<!--  App-level  -->
+				<MenuItem
+					Click="Menu_Preferences"
+					Header="Preferences..."
+					IsEnabled="False" />
+				<MenuItem
+					Click="Menu_NoteManager"
+					Header="Note manager..."
+					IsEnabled="False" />
+
+				<Separator />
+
+				<!--  Debug parity  -->
+				<MenuItem Click="Menu_Debug" Header="Properties (debug)" />
+
+				<Separator />
+
+				<MenuItem Click="Menu_Exit" Header="Quit StickIt" />
+			</ContextMenu>
+		</Border.ContextMenu>
+
 
 		<Grid>
 			<Grid.RowDefinitions>
@@ -276,6 +463,7 @@
 				Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
 				HorizontalScrollBarVisibility="Disabled"
 				MaxLines="1"
+				MouseLeftButtonDown="txtNoteTitle_select"
 				Text="{Binding Title}"
 				VerticalScrollBarVisibility="Disabled" />
 
@@ -288,6 +476,7 @@
 				Background="{Binding PaperBrush}"
 				BorderBrush="{Binding PaperBrush}"
 				BorderThickness="0"
+				ContextMenu="{x:Null}"
 				FontFamily="{Binding FontFamily}"
 				FontSize="{Binding FontSize}"
 				FontWeight="Normal"

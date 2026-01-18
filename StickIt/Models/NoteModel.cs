@@ -8,54 +8,53 @@ using StickIt.Services;
 namespace StickIt.Models
 {
 	public class NoteModel : INotifyPropertyChanged
-	{
-		public Guid Id { get; set; } = Guid.NewGuid();
+{
+    public NoteProperties Props { get; } = new NoteProperties();
 
-		private string _title = "Untitled";
-		public string Title
-		{
-			get => _title;
-			set { _title = value; OnPropertyChanged(); }
+    public string Id => Props.Id;
+
+    public string Title
+    {
+        get => Props.Title;
+        set { if (Props.Title == value) return; Props.Title = value; OnPropertyChanged(); }
+    }
+
+    public NoteColors.NoteColor ColorKey
+    {
+        get => Props.ColorKey;
+        set
+        {
+            if (Props.ColorKey == value) return;
+            Props.ColorKey = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(PaperBrush));
+        }
+    }
+
+    public string FontFamily
+    {
+        get => Props.FontFamily;
+        set { if (Props.FontFamily == value) return; Props.FontFamily = value; OnPropertyChanged(); }
+    }
+
+    public double FontSize
+    {
+			get => Props.FontSize;
+			set { if (Math.Abs(Props.FontSize - value) < 0.001) return; Props.FontSize = value; OnPropertyChanged(); }
 		}
 
-		private NoteColors.NoteColor _colorKey = NoteColors.NoteColor.ThreeMYellow;
-		public NoteColors.NoteColor ColorKey
-		{
-			get => _colorKey;
-			set
-			{
-				if (_colorKey == value) return;
-				_colorKey = value;
-				OnPropertyChanged();                   // ColorKey
-				OnPropertyChanged(nameof(PaperBrush)); // PaperBrush must refresh too
-			}
-		}
+    public System.Windows.Media.Brush PaperBrush
+    {
+        get
+        {
+            var hex = NoteColors.Hex[ColorKey];
+            return (SolidColorBrush)(new BrushConverter().ConvertFromString(hex)!);
+        }
+    }
 
-		private string _fontFamily = "Segoe UI";
-		public string FontFamily
-		{
-			get => _fontFamily;
-			set { if (_fontFamily == value) return; _fontFamily = value; OnPropertyChanged(); }
-		}
+    public event PropertyChangedEventHandler? PropertyChanged;
+    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+}
 
-		private double _fontSize = 14.0;
-		public double FontSize
-		{
-			get => _fontSize;
-			set { if (Math.Abs(_fontSize - value) < 0.001) return; _fontSize = value; OnPropertyChanged(); }
-		}
-
-		public System.Windows.Media.Brush PaperBrush
-		{
-			get
-			{
-				var hex = NoteColors.Hex[ColorKey];
-				return (SolidColorBrush)(new BrushConverter().ConvertFromString(hex)!);
-			}
-		}
-
-		public event PropertyChangedEventHandler? PropertyChanged;
-		private void OnPropertyChanged([CallerMemberName] string? name = null) =>
-			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-	}
 }

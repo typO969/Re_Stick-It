@@ -79,7 +79,7 @@ namespace StickIt
 				}
 
 				if (e.Key == System.Windows.Input.Key.F12)
-					new DebugColorsWindow(_note) { Owner = this }.Show();
+					new DebugColorsWindow(_note!) { Owner = this }.Show();
 			};
 		}
 
@@ -188,6 +188,186 @@ namespace StickIt
 			}
 		}
 
+
+		private void txtNoteContent_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+		{
+			e.Handled = true;
+			if (this.Content is FrameworkElement fe && fe.ContextMenu != null)
+				fe.ContextMenu.IsOpen = true;
+		}
+
+
+
+		public DateTime GetCreatedUtc() => _note?.Props.CreatedUtc ?? default;
+
+		private void TouchModifiedUtc()
+		{
+			if (_note != null)
+				_note.Props.ModifiedUtc = DateTime.UtcNow;
+		}
+
+		private App AppInstance => (App) System.Windows.Application.Current;
+
+		private void Menu_NewNote(object sender, RoutedEventArgs e)
+		{
+			AppInstance.CreateNewNoteNear(this);
+		}
+
+		private void Menu_Color(object sender, RoutedEventArgs e)
+		{
+			if (sender is not MenuItem mi || mi.Tag is not string keyName) return;
+
+			if (Enum.TryParse(keyName, out NoteColors.NoteColor key))
+			{
+				if (_note != null)
+					_note.ColorKey = key;
+				AppInstance.QueueSaveFromWindow(); // we’ll add this tiny helper in App
+			}
+		}
+
+		private void Menu_Sticky(object sender, RoutedEventArgs e)
+		{
+			if (sender is not MenuItem mi) return;
+
+			if (int.TryParse(mi.Tag?.ToString(), out var mode))
+			{
+				SetStuckMode(mode);
+				AppInstance.QueueSaveFromWindow();
+			}
+		}
+
+		private void Menu_Minimize(object sender, RoutedEventArgs e)
+		{
+			SetIsMinimized(true);
+			AppInstance.QueueSaveFromWindow();
+		}
+
+		private void Menu_Restore(object sender, RoutedEventArgs e)
+		{
+			SetIsMinimized(false);
+			AppInstance.QueueSaveFromWindow();
+		}
+
+		private void Menu_Debug(object sender, RoutedEventArgs e)
+		{
+			new DebugColorsWindow(_note!) { Owner = this }.Show();
+		}
+
+		private void Menu_Delete(object sender, RoutedEventArgs e)
+		{
+			Close(); // close = delete per your rule
+		}
+
+		private void Menu_Exit(object sender, RoutedEventArgs e)
+		{
+			System.Windows.Application.Current.Shutdown();
+		}
+
+		private void Menu_Cut(object sender, RoutedEventArgs e) => txtNoteContent.Cut();
+		private void Menu_Copy(object sender, RoutedEventArgs e) => txtNoteContent.Copy();
+		private void Menu_Paste(object sender, RoutedEventArgs e) => txtNoteContent.Paste();
+
+		private void Menu_SaveNow(object sender, RoutedEventArgs e)
+		{
+			AppInstance.QueueSaveFromWindow(); // triggers debounce
+		}
+
+		private void Menu_MinimizeAll(object sender, RoutedEventArgs e)
+		{
+			AppInstance.MinimizeAllNotes();
+		}
+
+		private void Menu_RestoreAll(object sender, RoutedEventArgs e)
+		{
+			AppInstance.RestoreHiddenNotes();
+		}
+
+		// Placeholders (disabled now; handler exists in case you enable later)
+		private void Menu_FontSettings(object sender, RoutedEventArgs e) { }
+		private void Menu_LoadNotes(object sender, RoutedEventArgs e) { }
+		private void Menu_Preferences(object sender, RoutedEventArgs e) { }
+		private void Menu_NoteManager(object sender, RoutedEventArgs e) { }
+
+
+		private void txtNoteTitle_select(object sender, MouseButtonEventArgs e)
+		{
+			// Ensure we have a note and the TextBox exists
+			if (_note == null || txtNoteTitle == null) return;
+
+			// Clear only if the current title is still the default
+			// Prefer checking the TextBox to reflect the UI state; fallback to model if needed
+			var isDefaultTitle =
+				string.Equals(txtNoteTitle.Text, "Untitled", StringComparison.Ordinal) ||
+				string.Equals(_note.Title, "Untitled", StringComparison.Ordinal);
+
+			if (!isDefaultTitle) return;
+
+			// Clear the title and focus the TextBox
+			txtNoteTitle.Clear();
+			txtNoteTitle.Focus();
+
+			// Update the model in case binding isn't immediate
+			_note.Title = string.Empty;
+
+			// Mark as handled so the click doesn't re-trigger other handlers
+			e.Handled = true;
+		}
+
+
+
+
+		// !!!!  -------------  NOTE PROPERTIES TEMP START ---------- !!!!!!!!
+		private void NoteMenu_Opened(object sender, RoutedEventArgs e)
+		{
+			// ID
+			if (_note == null)
+				return;
+			miProp_Id.Header = $"Note ID: {_note.Props.Id}";
+
+			// Contains: chars, words, lines
+			var text = GetText();
+			var chars = text.Length;
+			var words = CountWords(text);
+			var lines = CountLines(text);
+			miProp_Contains.Header = $"Contains: {chars} chars, {words} words, {lines} lines";
+
+			// Timestamps (UTC; you can format later)
+			miProp_Created.Header = $"Created: {_note.Props.CreatedUtc:u}";
+			miProp_Modified.Header = $"Modified: {_note.Props.ModifiedUtc:u}";
+
+			// Position
+			miProp_Position.Header = $"Position: X={Left:0}, Y={Top:0}";
+
+			// Color
+			miProp_Color.Header = $"Color: {_note.ColorKey}";
+
+			// Sticky
+			miProp_Sticky.Header = $"Sticky: {StickyLabel(GetStuckMode())}";
+
+			// Font
+			miProp_Font.Header = $"Font: {_note.FontFamily}, {_note.FontSize:0.#} pt";
+		}
+
+		private static int CountWords(string s)
+		{
+			if (string.IsNullOrWhiteSpace(s)) return 0;
+			return s.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+		}
+
+		private static int CountLines(string s)
+		{
+			if (string.IsNullOrEmpty(s)) return 0;
+			return s.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None).Length;
+		}
+
+		private static string StickyLabel(int mode) => mode switch
+		{
+			0 => "Not stuck",
+			1 => "Always on top",
+			2 => "Stick to application (future)",
+			_ => $"Unknown ({mode})"
+		};
+		// !!!!!!!!!!! ----------- NOTE PROPERTIES TEMP END ---------- !!!!!!!!!!!
 
 	}
 }

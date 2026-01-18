@@ -47,12 +47,6 @@ namespace StickIt
 				JsonStore.Save(_state);
 			}
 
-			foreach (var n in _state.Notes)
-			{
-				if (string.IsNullOrWhiteSpace(n.ColorKey))
-					n.ColorKey = nameof(NoteColors.NoteColor.ThreeMYellow);
-			}
-
 			foreach (var note in _state.Notes)
 				SpawnWindow(note);
 
@@ -71,71 +65,85 @@ namespace StickIt
 
 		}
 
+		public void QueueSaveFromWindow() => QueueSave();
+
+		public void MinimizeAllNotes()
+		{
+			foreach (var w in _windows.Where(w => w.IsLoaded))
+				w.SetIsMinimized(true);
+			QueueSave();
+		}
+
+		public void RestoreHiddenNotes()
+		{
+			foreach (var w in _windows.Where(w => w.IsLoaded))
+				w.SetIsMinimized(false);
+			QueueSave();
+		}
+
+
 
 		private void SpawnWindow(NotePersist note)
 		{
-			var model = new StickIt.Models.NoteModel();
+			// Build the model from persisted state (canonical)
+			//var model = new StickIt.Models.NoteModel();
+			var model = NotePersistMapper.ToModel(note);			
+
+
+			// Identity + metadata
+			model.Props.Id = note.Id;
+
+			model.Title = note.Title;
+
+			if (Enum.TryParse(note.ColorKey, out NoteColors.NoteColor ck))
+				model.ColorKey = ck;
+			else
+				model.ColorKey = NoteColors.NoteColor.ThreeMYellow;
+
+			model.FontFamily = note.FontFamily;
+			model.FontSize = note.FontSize;
+
+			// Create window
 			var w = new NoteWindow(model);
 
-			w.SetNoteId(note.Id);
-			w.SetTitle(note.Title);
-			w.SetText(note.Text);
-			w.SetColorKey(note.ColorKey);
-			w.SetStuckMode(note.StuckMode);
-			// Apply persisted content + background
-			w.SetNoteId(note.Id); // small helper you’ll add (see 2.3)
-			w.SetText(note.Text); // small helper you’ll add
-			w.SetColorKey(note.ColorKey);   // small helper you’ll add
+			// Geometry first
+			w.Width = note.Width <= 0 ? 380 : note.Width;
+			w.Height = note.Height <= 0 ? 320 : note.Height;
+			w.Left = note.Left;
+			w.Top = note.Top;
 
 			ClampToVirtualScreen(w);
 
-			w.SetFontFamily(note.FontFamily);
-			w.SetFontSize(note.FontSize);
-			w.SetNoteId(note.Id);
-			w.SetTitle(note.Title);
-			w.SetColorKey(note.ColorKey);
+			// Content (prefer RTF)
+			if (!string.IsNullOrWhiteSpace(note.Rtf))
+				w.SetRtf(note.Rtf);
+			else
+				w.SetText(note.Text);
+
+			// Sticky + minimized
 			w.SetStuckMode(note.StuckMode);
 
-			// geometry
-			w.Left = note.Left;
-			w.Top = note.Top;
-			w.Width = note.Width <= 0 ? 380 : note.Width;
-			w.Height = note.Height <= 0 ? 320 : note.Height;
+			w.Loaded += (_, __) =>
+			{
+				if (note.IsMinimized)
+					w.SetIsMinimized(true);
+			};
 
-			// Apply persisted geometry
-			w.Left = note.Left;
-			w.Top = note.Top;
-			w.Width = note.Width <= 0 ? 380 : note.Width;
-			w.Height = note.Height <= 0 ? 320 : note.Height;
-
-			// Wire autosave triggers
+			// Autosave triggers
 			w.LocationChanged += (_, __) => QueueSave();
 			w.SizeChanged += (_, __) => QueueSave();
-			w.NoteTextChanged += (_, __) => QueueSave(); // your own event from the NoteWindow
+			w.StateChanged += (_, __) => QueueSave();
+			w.NoteTextChanged += (_, __) => QueueSave();
 			w.Closed += (_, __) =>
 			{
 				_windows.Remove(w);
 				QueueSave();
 			};
 
-			// minimized (apply after Show to be reliable in WPF)
-			w.Loaded += (_, __) =>
-			{
-				if (note.IsMinimized)
-					w.SetIsMinimized(true);
-			};
-			// Prefer RTF if available, else fallback to plain text
-			if (!string.IsNullOrWhiteSpace(note.Rtf))
-				w.SetRtf(note.Rtf);
-			else
-				w.SetText(note.Text);
-
-
-			w.StateChanged += (_, __) => QueueSave();
-
 			_windows.Add(w);
 			w.Show();
 		}
+
 
 		private static void ClampToVirtualScreen(NoteWindow w)
 		{
@@ -167,75 +175,42 @@ namespace StickIt
 
 		private void PersistAllWindows()
 		{
-			// Rebuild state from currently open windows (source of truth)
 			_state.Notes = _windows
 				.Where(w => w.IsLoaded)
-				.Select(w => new NotePersist
-				{
-					 Id = w.NoteId,
-					 Left = w.Left,
-					 Top = w.Top,
-					 Width = w.Width,
-					 Height = w.Height,
-					 FontFamily = w.GetFontFamily(),
-					 FontSize = w.GetFontSize(),
-
-					 Title = w.GetTitle(),
-					 Rtf = w.GetRtf(),
-					 Text = w.GetText(),
-
-					 ColorKey = w.GetColorKey().ToString(),
-
-					 StuckMode = w.GetStuckMode(),
-					 IsMinimized = w.GetIsMinimized(),
-				})
+				.Select(w =>
+					NotePersistMapper.FromWindow(
+						w,
+				w.GetStuckMode(),
+				DateTime.UtcNow
+					))
 				.ToList();
 
 			JsonStore.Save(_state);
+
 		}
+
 
 		private void PersistAllWindowsOnShutdown()
 		{
-			// Rebuild state from currently open windows
 			_state.Notes = _windows
-				 .Where(w => w.IsLoaded)
-				 .Select(w =>
-				 {
-					 var stuck = w.GetStuckMode();
+			 .Where(w => w.IsLoaded)
+			 .Select(w =>
+			 {
+				 var stuck = w.GetStuckMode();
+				 if (stuck == StuckModeStuckToApp)
+					 stuck = StuckModeUnstuck; // or AlwaysOnTop
 
-					 // Normalize "stuck to app" on quit
-					 if (stuck == StuckModeStuckToApp)
-						 stuck = StuckModeUnstuck; // or: StuckModeAlwaysOnTop
-
-					 return new NotePersist
-					 {
-						 Id = w.NoteId,
-
-						 Left = w.Left,
-						 Top = w.Top,
-						 Width = w.Width,
-						 Height = w.Height,
-
-						 Title = w.GetTitle(),
-
-						 // Prefer RTF for fidelity, keep Text for fallback/search/debug
-						 Rtf = w.GetRtf(),
-						 Text = w.GetText(),
-
-						 ColorKey = w.GetColorKey().ToString(),
-
-						 StuckMode = stuck,
-						 IsMinimized = w.GetIsMinimized(),
-
-						 FontFamily = w.GetFontFamily(),
-						 FontSize = w.GetFontSize(),
-					 };
-				 })
-				 .ToList();
+				 return NotePersistMapper.FromWindow(
+					  w,
+					  stuck,
+					  DateTime.UtcNow
+				 );
+			 })
+			 .ToList();
 
 			JsonStore.Save(_state);
-		}
 
+		}
 
 
 		public void CreateNewNoteNear(NoteWindow? anchor = null)
@@ -250,7 +225,9 @@ namespace StickIt
 				Text = "",
 				ColorKey = nameof(NoteColors.NoteColor.ThreeMYellow),
 				StuckMode = 0,
-				IsMinimized = false
+				IsMinimized = false,
+				CreatedUtc = DateTime.UtcNow,
+				ModifiedUtc = DateTime.UtcNow,
 			};
 
 			// Add to state so it exists even if we crash before debounce tick
