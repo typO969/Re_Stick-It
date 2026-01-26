@@ -81,20 +81,36 @@
 			<ContextMenu Opened="NoteMenu_Opened">
 
 				<!--  Lifecycle  -->
-				<MenuItem Click="Menu_NewNote" Header="Add note" />
-				<MenuItem Click="Menu_Delete" Header="Remove note" />
+				<MenuItem
+					Click="Menu_NewNote"
+					Header="Add note"
+					InputGestureText="Ctrl+N" />
+				<MenuItem
+					Click="Menu_Delete"
+					Header="Delete note"
+					InputGestureText="Ctrl+W" />
 
 				<Separator />
 
 				<!--  Color  -->
-				<MenuItem Header="Note colors">
+				<MenuItem
+					x:Name="miNoteColors"
+					Header="Note colors"
+					SubmenuOpened="NoteColors_SubmenuOpened">
+
 					<MenuItem
 						x:Name="NeonPinkMenuItem"
 						Click="Menu_Color"
 						Header="Neon Pink"
 						Tag="NeonPink">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#dc39e5"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -103,7 +119,13 @@
 						Header="Mulberry"
 						Tag="Mulberry">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#974F70"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -112,7 +134,13 @@
 						Header="Fireball Fuchsia"
 						Tag="FireballFuchsia">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#DD4B99"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -121,7 +149,13 @@
 						Header="Poppy"
 						Tag="Poppy">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#C67D4D"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -130,7 +164,13 @@
 						Header="Saffron"
 						Tag="Saffron">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#CB5147"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -139,7 +179,13 @@
 						Header="Curry"
 						Tag="Curry">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#F0B555"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -148,7 +194,13 @@
 						Header="3M Yellow (Default)"
 						Tag="ThreeMYellow">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#F7E03D"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -157,7 +209,13 @@
 						Header="Canary Yellow"
 						Tag="CanaryYellow">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#F9F8BC"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -166,7 +224,13 @@
 						Header="Neon Green"
 						Tag="NeonGreen">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#A6FC41"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -175,7 +239,13 @@
 						Header="Asparagus"
 						Tag="Asparagus">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#809840"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -184,7 +254,13 @@
 						Header="Emerald"
 						Tag="Emerald">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#62BDB8"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 					<MenuItem
@@ -193,7 +269,13 @@
 						Header="Mediterranean Blue"
 						Tag="MediterraneanBlue">
 						<MenuItem.Icon>
-							<ContentControl Content="{Binding Tag, RelativeSource={RelativeSource AncestorType=MenuItem}, Converter={StaticResource ColorKeyToBgBrush}}" ContentTemplate="{StaticResource ColorSwatchIconTemplate}" />
+							<Border
+								Width="12"
+								Height="12"
+								Background="#4077C4"
+								BorderBrush="#66000000"
+								BorderThickness="1"
+								CornerRadius="2" />
 						</MenuItem.Icon>
 					</MenuItem>
 				</MenuItem>
@@ -261,7 +343,10 @@
 				<Separator />
 
 				<!--  Window state  -->
-				<MenuItem Click="Menu_Minimize" Header="Minimize" />
+				<MenuItem
+					Click="Menu_Minimize"
+					Header="Minimize"
+					InputGestureText="Ctrl+M" />
 				<MenuItem Click="Menu_Restore" Header="Restore" />
 				<MenuItem Click="Menu_MinimizeAll" Header="Minimize all notes" />
 				<MenuItem Click="Menu_RestoreAll" Header="Restore hidden notes" />
@@ -464,7 +549,8 @@
 				HorizontalScrollBarVisibility="Disabled"
 				MaxLines="1"
 				MouseLeftButtonDown="txtNoteTitle_select"
-				Text="{Binding Title}"
+				PreviewMouseLeftButtonDown="txtNoteTitle_select"
+				Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
 				VerticalScrollBarVisibility="Disabled" />
 
 			<!--  Main Content Area  -->
