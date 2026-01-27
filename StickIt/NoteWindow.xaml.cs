@@ -8,6 +8,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Linq;
 
 using StickIt.Models;
 using StickIt.Services;
@@ -64,14 +65,44 @@ namespace StickIt
 			DataContext = _note;
 
 			// Keep autosave behavior consistent regardless of constructor use
-			txtNoteContent.TextChanged += (_, __) => NoteTextChanged?.Invoke(this, EventArgs.Empty);		
+			txtNoteContent.TextChanged += (_, __) => NoteTextChanged?.Invoke(this, EventArgs.Empty);
 
 			ControlBar.MouseLeftButtonDown += (_, __) => DragMove();
 
 			KeyDown += (_, e) =>
 			{
+				// Ctrl+N / Ctrl+W / Ctrl+M
+				if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
+				{
+					switch (e.Key)
+					{
+						case Key.N:
+							AppInstance.CreateNewNoteNear(this);
+							e.Handled = true;
+							return;
+
+						case Key.W:
+							Close(); // close = delete
+							e.Handled = true;
+							return;
+
+						case Key.M:
+							WindowState = WindowState.Minimized;
+							AppInstance.QueueSaveFromWindow();
+							e.Handled = true;
+							return;
+					}
+				}
+
+				
+				if (e.Key == Key.F12)
+				{
+					new DebugColorsWindow(_note!) { Owner = this }.Show();
+					e.Handled = true;
+				}
+
 				if (e.Key == System.Windows.Input.Key.N &&
-					 (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
+						 (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
 				{
 					((App) WpfApplication.Current).CreateNewNoteNear(this);
 					e.Handled = true;
@@ -142,6 +173,7 @@ namespace StickIt
 			// 0 = normal, 1 = Topmost, 2 = reserved (treat as normal for now)
 			Topmost = (mode == 1);
 		}
+
 		public string? GetRtf()
 		{
 			try
@@ -260,8 +292,9 @@ namespace StickIt
 
 		private void Menu_Exit(object sender, RoutedEventArgs e)
 		{
-			System.Windows.Application.Current.Shutdown();
+			AppInstance.ShutdownRequested();
 		}
+
 
 		private void Menu_Cut(object sender, RoutedEventArgs e) => txtNoteContent.Cut();
 		private void Menu_Copy(object sender, RoutedEventArgs e) => txtNoteContent.Copy();
@@ -312,6 +345,28 @@ namespace StickIt
 			// Mark as handled so the click doesn't re-trigger other handlers
 			e.Handled = true;
 		}
+
+		private void NoteColors_SubmenuOpened(object sender, RoutedEventArgs e)
+		{
+			if (_note == null) return;
+
+			var current = _note.ColorKey;
+
+			foreach (var item in miNoteColors.Items.OfType<MenuItem>())
+			{
+				if (item.Tag is not string tag) continue;
+				if (!Enum.TryParse(tag, out NoteColors.NoteColor key)) continue;
+
+				var isCurrent = (key == current);
+
+				item.IsEnabled = !isCurrent;
+
+				// optional, but nice UX:
+				item.IsCheckable = true;
+				item.IsChecked = isCurrent;
+			}
+		}
+
 
 
 
