@@ -19,6 +19,9 @@ namespace StickIt
 	{
 		private readonly NoteModel? _note;
 		private int _noteStuckMode = 0;
+		private double? _stickyOffsetX;
+		private double? _stickyOffsetY;
+
 
 		public string NoteId { get; private set; } = Guid.NewGuid().ToString("N");
 		public NoteColors.NoteColor GetColorKey() => _note?.ColorKey ?? NoteColors.NoteColor.ThreeMYellow;
@@ -60,6 +63,13 @@ namespace StickIt
 		public NoteWindow(NoteModel note)
 		{
 			InitializeComponent();
+
+			Loaded += (_, __) =>
+			{
+				// best-effort: resolves HWND once, no hooks, no timers
+				TryRebindStickyTarget();
+			};
+
 
 			_note = note;
 			DataContext = _note;
@@ -170,7 +180,7 @@ namespace StickIt
 			_noteStuckMode = mode;
 
 			// v4 behavior:
-			// 0 = normal, 1 = Topmost, 2 = reserved (treat as normal for now)
+			// 0 = normal, 1 = Topmost, 2 = reserved 
 			Topmost = (mode == 1);
 		}
 
@@ -259,14 +269,26 @@ namespace StickIt
 
 		private void Menu_Sticky(object sender, RoutedEventArgs e)
 		{
-			if (sender is not MenuItem mi) return;
+			// Cycle: 0 -> 1 -> 2 -> 0 ...
+			var next = (_noteStuckMode + 1) % 3;
 
-			if (int.TryParse(mi.Tag?.ToString(), out var mode))
+			ApplyStuckMode(next);
+
+			// Side-effects:
+			// 0: clear stick target state
+			// 1: Topmost only
+			// 2: keep existing target if any; otherwise user must pick later
+			if (next == 0)
 			{
-				SetStuckMode(mode);
-				AppInstance.QueueSaveFromWindow();
+				_stickyTarget = null;
+				_stickyOffsetX = null;
+				_stickyOffsetY = null;
 			}
+
+			// Ensure topmost matches the new mode (ApplyStuckMode already does this)
+			AppInstance.QueueSaveFromWindow();
 		}
+
 
 		private void Menu_Minimize(object sender, RoutedEventArgs e)
 		{
@@ -367,6 +389,140 @@ namespace StickIt
 			}
 		}
 
+		private void Menu_StickToWindow_Picker(object sender, RoutedEventArgs e)
+		{
+			var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
+			if (dlg.ShowDialog() != true || dlg.SelectedTarget == null) return;
+
+			// Groundwork: store intent only (you’ll persist it next step)
+			_noteStuckMode = 2;            // “wants to stick”
+			Topmost = false;               // mode 2 is not topmost
+
+			_stickyTarget = dlg.SelectedTarget;
+
+			// capture current offset (note position relative to target top-left)
+			if (StickIt.Sticky.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+			{
+				_stickyOffsetX = this.Left - tr.X;
+				_stickyOffsetY = this.Top - tr.Y;
+			}
+
+
+			_noteStuckMode = 2;
+			Topmost = false;			
+
+			// TEMP: store somewhere canonical later (NotePersist will carry it)
+			// For now, you can stash it in NoteProperties.StickyTarget as a string if needed,
+			// or we do Step 4 to thread it cleanly into NotePersistMapper/Json.
+
+			AppInstance.QueueSaveFromWindow();
+		}
+
+		public bool SnapToStickyTargetNow()
+		{
+			if (_noteStuckMode != 2) return false;
+
+			// Ensure we have a live hwnd
+			if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
+			{
+				// best-effort rebind
+				if (!TryRebindStickyTarget()) return false;
+			}
+
+			if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
+				return false;
+
+			if (!StickIt.Sticky.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+				return false;
+
+			// If we never captured offset, capture it now
+			_stickyOffsetX ??= (this.Left - tr.X);
+			_stickyOffsetY ??= (this.Top - tr.Y);
+
+			// Move note to follow target
+			this.Left = tr.X + _stickyOffsetX.Value;
+			this.Top = tr.Y + _stickyOffsetY.Value;
+
+			return true;
+		}
+
+
+		private StickIt.Sticky.StickyTargetInfo? _stickyTarget;
+
+		public void SetStickyTarget(StickIt.Persistence.StickyTargetPersist? p)
+		{
+			if (p == null)
+			{
+				_stickyTarget = null;
+				_stickyOffsetX = null;
+				_stickyOffsetY = null;
+				return;
+			}
+
+			_stickyTarget = new StickIt.Sticky.StickyTargetInfo
+			{
+				Hwnd = IntPtr.Zero,
+				ProcessId = p.ProcessId,
+				ProcessName = p.ProcessName,
+				WindowTitle = p.WindowTitle,
+				ClassName = p.ClassName,
+				CapturedUtc = p.CapturedUtc
+			};
+
+			_stickyOffsetX = p.OffsetX;
+			_stickyOffsetY = p.OffsetY;
+		}
+
+
+		public StickIt.Persistence.StickyTargetPersist? GetStickyTargetPersist()
+		{
+			if (_stickyTarget == null) return null;
+
+			return new StickIt.Persistence.StickyTargetPersist
+			{
+				ProcessId = _stickyTarget.ProcessId,
+				ProcessName = _stickyTarget.ProcessName,
+				WindowTitle = _stickyTarget.WindowTitle,
+				ClassName = _stickyTarget.ClassName,
+				CapturedUtc = _stickyTarget.CapturedUtc,
+				OffsetX = _stickyOffsetX,
+				OffsetY = _stickyOffsetY
+			};
+		}
+
+		public void ClearStickyTarget()
+		{
+			_noteStuckMode = 0;
+			Topmost = false;
+			_stickyTarget = null;
+			_stickyOffsetX = null;
+			_stickyOffsetY = null;
+		}
+
+
+
+		public bool TryRebindStickyTarget()
+		{
+			if (_noteStuckMode != 2) return false;
+
+			var persisted = GetStickyTargetPersist();
+			if (persisted == null) return false;
+
+			var resolved = StickIt.Sticky.StickyTargetResolver.TryResolve(persisted);
+			if (resolved == null) return false;
+
+			_stickyTarget = resolved;
+			return true;
+		}
+
+		private void Menu_SnapToTargetNow(object sender, RoutedEventArgs e)
+		{
+			if (SnapToStickyTargetNow())
+				AppInstance.QueueSaveFromWindow();
+		}
+
+
+
 
 
 
@@ -423,6 +579,19 @@ namespace StickIt
 			_ => $"Unknown ({mode})"
 		};
 		// !!!!!!!!!!! ----------- NOTE PROPERTIES TEMP END ---------- !!!!!!!!!!!
+
+
+
+		// +++++++++ +++++++++++++ BEGIN TEMP STICKY TARGET DEBUGGING ++++++++++++++++++++
+		private void Menu_RebindStickyTarget(object sender, RoutedEventArgs e)
+		{
+			var ok = TryRebindStickyTarget();
+			// Optional: you can show a tiny MessageBox if you want.
+			// If you do, keep it subtle (or just do nothing).
+			if (ok) AppInstance.QueueSaveFromWindow();
+		}
+
+		// +++++++++ +++++++++++++ END TEMP STICKY TARGET DEBUGGING ++++++++++++++++++++
 
 	}
 }

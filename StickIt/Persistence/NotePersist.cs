@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using StickIt.Services;
+using StickIt.Sticky;
 
 namespace StickIt.Persistence
 {
@@ -29,6 +30,9 @@ namespace StickIt.Persistence
 
 		public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 		public DateTime ModifiedUtc { get; set; } = DateTime.UtcNow;
+
+
+		public StickyTargetPersist? StickyTargetPersist { get; set; } = null;
 
 		public int StickyMode { get; set; } = 0;       // your StuckMode
 		public string? StickyTarget { get; set; } = null;

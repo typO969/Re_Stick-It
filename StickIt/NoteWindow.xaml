@@ -363,7 +363,10 @@
 						Click="Menu_Sticky"
 						Header="Always on top"
 						Tag="1" />
-					<MenuItem Header="Stick to application (future)" IsEnabled="False" />
+					<MenuItem
+						Click="Menu_SnapToTargetNow"
+						Header="Stick to application"
+						IsEnabled="True" />
 				</MenuItem>
 
 				<Separator />

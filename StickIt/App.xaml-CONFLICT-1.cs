@@ -24,9 +24,6 @@ namespace StickIt
 		private bool _shownStillRunningNoticeThisSession;
 
 		private System.Threading.Mutex? _singleInstanceMutex;
-		private const int MaxNotesToAutoOpen = 25;
-
-
 
 
 		// Debounce saving so we don’t write on every keystroke/mouse move
@@ -46,7 +43,6 @@ namespace StickIt
 				Shutdown();
 				return;
 			}
-
 
 			_saveTimer.Tick += (_, __) =>
 			{
@@ -70,36 +66,10 @@ namespace StickIt
 				JsonStore.Save(_state);
 			}
 
-			var notes = _state.Notes ?? new List<NotePersist>();
-
-			if (notes.Count > MaxNotesToAutoOpen)
-			{
-				var total = notes.Count;
-
-				notes = notes
-					 .OrderByDescending(n => n.ModifiedUtc)
-					 .Take(MaxNotesToAutoOpen)
-					 .ToList();
-
-				_state.Notes = notes;
-				JsonStore.Save(_state);
-
-				_tray?.ShowTrimmedLoadNotice(notes.Count, total);
-			}
-
-			foreach (var note in notes)
-			{
+			foreach (var note in _state.Notes)
 				SpawnWindow(note);
-			}
 
-			//foreach (var p in notes)
-			//{
-			//	SpawnWindow(p);
-			//}
-
-			//foreach (var note in _state.Notes)
-			//	SpawnWindow(note);
-
+			// TODO: swap icon source later; for now use the executable icon.
 			var iconPath = System.IO.Path.Combine(
 				AppDomain.CurrentDomain.BaseDirectory,
 				"Properties",
@@ -116,9 +86,6 @@ namespace StickIt
 				 SaveAllNotesNow,
 				 ShowAllNotes,
 				 ShutdownRequested);
-
-
-
 
 			Exit += (_, __) =>
 			{
@@ -325,6 +292,11 @@ namespace StickIt
 
 			// Sticky + minimized
 			w.SetStuckMode(note.StuckMode);
+
+			w.SetStickyTarget(note.StickyTargetPersist);
+
+
+
 
 			w.Loaded += (_, __) =>
 			{

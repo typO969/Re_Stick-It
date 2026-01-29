@@ -32,7 +32,6 @@ namespace StickIt.Services
 					onNewNote();
 			};
 
-
 			_ni.DoubleClick += (_, __) => onShowNotes();
 
 		}
@@ -60,14 +59,6 @@ namespace StickIt.Services
 			menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, __) => onExit()));
 
 			return menu;
-		}
-
-		public void ShowTrimmedLoadNotice(int opened, int total)
-		{
-			_ni.BalloonTipTitle = "StickIt";
-			_ni.BalloonTipText = $"Loaded {opened} of {total} notes for safety. Open more by creating new notes (or restore from backup).";
-			_ni.BalloonTipIcon = ToolTipIcon.Warning;
-			_ni.ShowBalloonTip(5000);
 		}
 
 

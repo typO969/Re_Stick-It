@@ -52,7 +52,7 @@
 				</Grid.ColumnDefinitions>
 
 				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}" />
-				<TextBlock Grid.Column="1" Text="Background" />
+				<TextBlock Grid.Column="1" Text="Background [1]" />
 				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Background}" />
 			</Grid>
 
@@ -64,7 +64,7 @@
 				</Grid.ColumnDefinitions>
 
 				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=ControlBar}" />
-				<TextBlock Grid.Column="1" Text="ControlBar" />
+				<TextBlock Grid.Column="1" Text="ControlBar (13 - [1])" />
 				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=ControlBar}" />
 			</Grid>
 
@@ -76,20 +76,27 @@
 				</Grid.ColumnDefinitions>
 
 				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}" />
-				<TextBlock Grid.Column="1" Text="Buttons" />
+				<TextBlock Grid.Column="1" Text="Buttons (50 - [1])" />
 				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Buttons}" />
 			</Grid>
 
 			<Grid Margin="0,0,0,8">
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="79*" />
+					<ColumnDefinition Width="205*" />
 					<ColumnDefinition Width="Auto" />
 				</Grid.ColumnDefinitions>
 
-				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Outlines}" />
-				<TextBlock Grid.Column="1" Text="Outlines" />
-				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Outlines}" />
+				<Border
+					Grid.Column="0"
+					Margin="0,0,10,0"
+					Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Outlines}" />
+				<TextBlock
+					Grid.Column="1"
+					Grid.ColumnSpan="2"
+					Text="Outlines (halve [1])" />
+				<TextBlock Grid.Column="3" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Outlines}" />
 			</Grid>
 
 			<Grid Margin="0,0,0,8">
@@ -100,7 +107,7 @@
 				</Grid.ColumnDefinitions>
 
 				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}" />
-				<TextBlock Grid.Column="1" Text="Highlights" />
+				<TextBlock Grid.Column="1" Text="Highlights (30,100,25 + [1])" />
 				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Highlights}" />
 			</Grid>
 
@@ -112,7 +119,7 @@
 				</Grid.ColumnDefinitions>
 
 				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}" />
-				<TextBlock Grid.Column="1" Text="Text" />
+				<TextBlock Grid.Column="1" Text="Text  (halve (50 - [1]) -5)" />
 				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Text}" />
 			</Grid>
 		</StackPanel>

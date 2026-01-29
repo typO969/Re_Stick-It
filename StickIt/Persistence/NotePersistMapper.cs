@@ -55,6 +55,8 @@ namespace StickIt.Persistence
 				FontFamily = w.GetFontFamily(),
 				FontSize = w.GetFontSize(),
 
+				StickyTargetPersist = w.GetStickyTargetPersist(),
+
 				StuckMode = stuckModeFinal,
 				IsMinimized = w.GetIsMinimized(),
 
