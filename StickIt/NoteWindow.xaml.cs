@@ -1,31 +1,75 @@
-﻿using WpfApplication = System.Windows.Application;
-
+﻿using System;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Input;
-using System.Linq;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Effects;
+using System.Windows.Threading;
 
 using StickIt.Models;
 using StickIt.Services;
+using StickIt.Sticky.Services;
+
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
+
+using WpfApplication = System.Windows.Application;
 
 namespace StickIt
 {
-	public partial class NoteWindow : Window
+	public partial class NoteWindow : Window, INotifyPropertyChanged
 	{
 		private readonly NoteModel? _note;
-		private int _noteStuckMode = 0;
-		private double? _stickyOffsetX;
-		private double? _stickyOffsetY;
 
+		private int _noteStuckMode = 0;
+		private double? _stickyOffsetXPx;
+		private double? _stickyOffsetYPx;
+
+		private readonly DispatcherTimer _followTimer = new DispatcherTimer();
+		private double? _lastTargetX;
+		private double? _lastTargetY;
+
+		private StickIt.Sticky.Services.StickyWinEventHookService? _winEventHook;
+		private bool _winEventSubscribed;
+
+		private System.Windows.Threading.DispatcherTimer _stickyCoalesceTimer;
+		private bool _stickySnapPending;
+
+
+
+
+
+		public event PropertyChangedEventHandler? PropertyChanged;
+		private void OnPropertyChanged([CallerMemberName] string? name = null) =>
+			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
 		public string NoteId { get; private set; } = Guid.NewGuid().ToString("N");
 		public NoteColors.NoteColor GetColorKey() => _note?.ColorKey ?? NoteColors.NoteColor.ThreeMYellow;
 		public string GetTitle() => _note?.Title ?? "Untitled";
+
+		private System.Windows.Point GetNoteTopLeftPx()
+		{
+			return this.PointToScreen(new System.Windows.Point(0, 0));
+		}
+
+		public int StuckMode
+		{
+			get => _noteStuckMode;
+			private set
+			{
+				if (_noteStuckMode == value) return;
+				_noteStuckMode = value;
+				OnPropertyChanged();
+			}
+		}
+
 		public void SetFontFamily(string family)
 		{
 			if (_note != null)
@@ -44,6 +88,41 @@ namespace StickIt
 			if (_note != null)
 				_note.Title = title ?? "Untitled";
 		}
+
+
+		private void RequestStickySnap()
+		{
+			if (_stickyCoalesceTimer == null)
+			{
+				_stickyCoalesceTimer = new System.Windows.Threading.DispatcherTimer(
+					System.Windows.Threading.DispatcherPriority.Background,
+					Dispatcher);
+
+				// ~60fps. If you want less CPU, change to 33ms (~30fps).
+				_stickyCoalesceTimer.Interval = TimeSpan.FromMilliseconds(16);
+
+				_stickyCoalesceTimer.Tick += (s, e) =>
+				{
+					_stickyCoalesceTimer.Stop();
+
+					if (!_stickySnapPending) return;
+					_stickySnapPending = false;
+
+					if (_noteStuckMode != 2) return;
+					if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero) return;
+
+					SnapToStickyTargetNow();
+				};
+			}
+
+			_stickySnapPending = true;
+
+			// restart timer (coalesces multiple requests)
+			_stickyCoalesceTimer.Stop();
+			_stickyCoalesceTimer.Start();
+		}
+
+
 
 		public int GetStuckMode() => _noteStuckMode;        // see below
 		public void SetStuckMode(int mode) => ApplyStuckMode(mode);
@@ -64,11 +143,24 @@ namespace StickIt
 		{
 			InitializeComponent();
 
+			Loaded += (_, __) => EnsureStickyTargetOnLoad();
+
 			Loaded += (_, __) =>
 			{
 				// best-effort: resolves HWND once, no hooks, no timers
 				TryRebindStickyTarget();
 			};
+
+			_followTimer.Interval = TimeSpan.FromMilliseconds(150);
+			_followTimer.Tick += (_, __) =>
+			{
+				if (_noteStuckMode == 2)
+					SnapToStickyTargetNow();
+			};
+			_followTimer.Start();
+
+
+			UpdateStickyVisuals();
 
 
 			_note = note;
@@ -104,7 +196,7 @@ namespace StickIt
 					}
 				}
 
-				
+
 				if (e.Key == Key.F12)
 				{
 					new DebugColorsWindow(_note!) { Owner = this }.Show();
@@ -115,7 +207,7 @@ namespace StickIt
 						 (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)
 				{
 					((App) WpfApplication.Current).CreateNewNoteNear(this);
-					e.Handled = true;
+				 e.Handled = true;
 					return;
 				}
 
@@ -162,7 +254,17 @@ namespace StickIt
 		private void btnClose_Click(object sender, RoutedEventArgs e)
 		{
 			Close();
+			_followTimer.Stop();
+
 		}
+
+		private void StopStickyHook()
+		{
+			if (_winEventHook == null) return;
+			_winEventHook.Dispose();
+			_winEventHook = null;
+		}
+
 
 		private void btnMinimize_Click(object sender, RoutedEventArgs e)
 		{
@@ -171,18 +273,87 @@ namespace StickIt
 
 		private void btnPinCycle_Click(object sender, RoutedEventArgs e)
 		{
-			// TODO: Implement pin cycle logic here
+			// Cycle: 0 -> 1 -> 2 -> 0 ...
+			var next = (_noteStuckMode + 1) % 3;
+
+			if (next == 2)
+			{
+				// Mode 2 entry path #1: "Stick note" (auto target under note)
+				if (!StickToWindowUnderMe())
+				{
+					// Fallback #1: user picks a window explicitly
+					var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
+					if (dlg.ShowDialog() == true && dlg.SelectedTarget != null)
+					{
+						_stickyTarget = dlg.SelectedTarget;
+						EnsureHookForStickyTarget();
+
+						_noteStuckMode = 2;
+						Topmost = false;
+
+						if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+						{
+							var notePx = GetNoteTopLeftPx();
+							_stickyOffsetXPx = notePx.X - tr.X;
+							_stickyOffsetYPx = notePx.Y - tr.Y;
+						}
+
+						AppInstance.QueueSaveFromWindow();
+						return;
+					}
+
+					// Fallback #2: stick to Desktop (so mode 2 can still persist safely)
+					var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
+					if (desk != null)
+					{
+						_stickyTarget = desk;
+						EnsureHookForStickyTarget();
+
+						_noteStuckMode = 2;
+						Topmost = false;
+
+						if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+						{
+							var notePx = GetNoteTopLeftPx();
+							_stickyOffsetXPx = notePx.X - tr.X;
+							_stickyOffsetYPx = notePx.Y - tr.Y;
+						}
+
+						AppInstance.QueueSaveFromWindow();
+						return;
+					}
+
+					// Last resort: bail to normal
+					ApplyStuckMode(0);
+					AppInstance.QueueSaveFromWindow();
+					StopStickyHook();
+					return;
+
+				}
+
+				// StickToWindowUnderMe() already set mode/offset + queued save.
+				return;
+			}
+
+			// Modes 0 and 1 are pure state changes
+			ApplyStuckMode(next);
+			StopStickyHook();
+
+			// Clearing behavior when leaving mode 2 (or landing on 0)
+			if (next == 0)
+			{
+				_stickyTarget = null;
+				_stickyOffsetXPx = null;
+				_stickyOffsetYPx = null;
+			}
+			StopStickyHook();
+			AppInstance.QueueSaveFromWindow();
 		}
 
-		private void ApplyStuckMode(int mode)
-		{
-			if (mode < 0 || mode > 2) mode = 0;
-			_noteStuckMode = mode;
 
-			// v4 behavior:
-			// 0 = normal, 1 = Topmost, 2 = reserved 
-			Topmost = (mode == 1);
-		}
+
+
+
 
 		public string? GetRtf()
 		{
@@ -281,8 +452,8 @@ namespace StickIt
 			if (next == 0)
 			{
 				_stickyTarget = null;
-				_stickyOffsetX = null;
-				_stickyOffsetY = null;
+				_stickyOffsetXPx = null;
+				_stickyOffsetYPx = null;
 			}
 
 			// Ensure topmost matches the new mode (ApplyStuckMode already does this)
@@ -310,6 +481,7 @@ namespace StickIt
 		private void Menu_Delete(object sender, RoutedEventArgs e)
 		{
 			Close(); // close = delete per your rule
+			StopHook();
 		}
 
 		private void Menu_Exit(object sender, RoutedEventArgs e)
@@ -394,22 +566,22 @@ namespace StickIt
 			var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
 			if (dlg.ShowDialog() != true || dlg.SelectedTarget == null) return;
 
-			// Groundwork: store intent only (you’ll persist it next step)
-			_noteStuckMode = 2;            // “wants to stick”
-			Topmost = false;               // mode 2 is not topmost
-
+		
 			_stickyTarget = dlg.SelectedTarget;
+			EnsureHookForStickyTarget();
+
 
 			// capture current offset (note position relative to target top-left)
-			if (StickIt.Sticky.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+			if (WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
 			{
-				_stickyOffsetX = this.Left - tr.X;
-				_stickyOffsetY = this.Top - tr.Y;
+				var notePx = GetNoteTopLeftPx();
+				_stickyOffsetXPx = notePx.X - tr.X;
+				_stickyOffsetYPx = notePx.Y - tr.Y;
 			}
 
 
 			_noteStuckMode = 2;
-			Topmost = false;			
+			Topmost = false;
 
 			// TEMP: store somewhere canonical later (NotePersist will carry it)
 			// For now, you can stash it in NoteProperties.StickyTarget as a string if needed,
@@ -425,26 +597,57 @@ namespace StickIt
 			// Ensure we have a live hwnd
 			if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
 			{
-				// best-effort rebind
 				if (!TryRebindStickyTarget()) return false;
 			}
-
 			if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
 				return false;
 
-			if (!StickIt.Sticky.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+			// Target rect (pixels)
+			if (!StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
 				return false;
 
-			// If we never captured offset, capture it now
-			_stickyOffsetX ??= (this.Left - tr.X);
-			_stickyOffsetY ??= (this.Top - tr.Y);
+			// Skip work if target didn’t move (pixel compare)
+			if (_lastTargetX.HasValue && _lastTargetY.HasValue &&
+				_lastTargetX.Value == tr.X && _lastTargetY.Value == tr.Y)
+			{
+				return true;
+			}
 
-			// Move note to follow target
-			this.Left = tr.X + _stickyOffsetX.Value;
-			this.Top = tr.Y + _stickyOffsetY.Value;
+			_lastTargetX = tr.X;
+			_lastTargetY = tr.Y;
+
+			// Cache offset once (note-top-left relative to target-top-left, in pixels)
+			if (!_stickyOffsetXPx.HasValue || !_stickyOffsetYPx.HasValue)
+			{
+				var notePx = GetNoteTopLeftPx();
+				_stickyOffsetXPx = notePx.X - tr.X;
+				_stickyOffsetYPx = notePx.Y - tr.Y;
+			}
+
+			int newX = (int) (tr.X + (int) Math.Round(_stickyOffsetXPx.Value));
+			int newY = (int) (tr.Y + (int) Math.Round(_stickyOffsetYPx.Value));
+
+			// Clamp to virtual desktop so it can’t “disappear”
+			int minX = (int) SystemParameters.VirtualScreenLeft;
+			int minY = (int) SystemParameters.VirtualScreenTop;
+			int maxX = (int) (SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - this.Width);
+			int maxY = (int) (SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - this.Height);
+
+			if (newX < minX) newX = minX;
+			if (newY < minY) newY = minY;
+			if (newX > maxX) newX = maxX;
+			if (newY > maxY) newY = maxY;
+
+			var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+			// IMPORTANT: insert-after = target hwnd, so we stay above it without being Topmost
+			WindowMoveService.MoveWindow(myHwnd, newX, newY, _stickyTarget.Hwnd);
+
 
 			return true;
 		}
+
+
 
 
 		private StickIt.Sticky.StickyTargetInfo? _stickyTarget;
@@ -454,8 +657,8 @@ namespace StickIt
 			if (p == null)
 			{
 				_stickyTarget = null;
-				_stickyOffsetX = null;
-				_stickyOffsetY = null;
+				_stickyOffsetXPx = null;
+				_stickyOffsetYPx = null;
 				return;
 			}
 
@@ -469,8 +672,8 @@ namespace StickIt
 				CapturedUtc = p.CapturedUtc
 			};
 
-			_stickyOffsetX = p.OffsetX;
-			_stickyOffsetY = p.OffsetY;
+			_stickyOffsetXPx = p.OffsetX;
+			_stickyOffsetYPx = p.OffsetY;
 		}
 
 
@@ -485,8 +688,8 @@ namespace StickIt
 				WindowTitle = _stickyTarget.WindowTitle,
 				ClassName = _stickyTarget.ClassName,
 				CapturedUtc = _stickyTarget.CapturedUtc,
-				OffsetX = _stickyOffsetX,
-				OffsetY = _stickyOffsetY
+				OffsetX = _stickyOffsetXPx,
+				OffsetY = _stickyOffsetYPx
 			};
 		}
 
@@ -495,34 +698,410 @@ namespace StickIt
 			_noteStuckMode = 0;
 			Topmost = false;
 			_stickyTarget = null;
-			_stickyOffsetX = null;
-			_stickyOffsetY = null;
+			_stickyOffsetXPx = null;
+			_stickyOffsetYPx = null;
 		}
 
 
 
 		public bool TryRebindStickyTarget()
 		{
+			// Only meaningful in mode 2
 			if (_noteStuckMode != 2) return false;
 
-			var persisted = GetStickyTargetPersist();
-			if (persisted == null) return false;
+			// Nothing to rebind
+			if (_stickyTarget == null) return false;
 
-			var resolved = StickIt.Sticky.StickyTargetResolver.TryResolve(persisted);
-			if (resolved == null) return false;
+			// Already bound
+			if (_stickyTarget.Hwnd != IntPtr.Zero) return true;
+
+			// Build a persist-hints object from what we know (PID first, then title/class)
+			var p = new StickIt.Persistence.StickyTargetPersist
+			{
+				ProcessId = _stickyTarget.ProcessId,
+				ProcessName = _stickyTarget.ProcessName,
+				WindowTitle = _stickyTarget.WindowTitle,
+				ClassName = _stickyTarget.ClassName,
+				CapturedUtc = _stickyTarget.CapturedUtc,
+
+				// offsets are irrelevant to rebind, but keep them if present
+				OffsetX = _stickyOffsetXPx,
+				OffsetY = _stickyOffsetYPx
+			};
+
+			var resolved = StickIt.Sticky.StickyTargetResolver.TryResolve(p);
+			if (resolved == null || resolved.Hwnd == IntPtr.Zero)
+				return false;
 
 			_stickyTarget = resolved;
+
+			// Force next snap to actually move (don’t short-circuit on cached target coords)
+			_lastTargetX = null;
+			_lastTargetY = null;
+
+			// Ensure hook is running for follow (once we add it fully, this becomes important)
+			EnsureHookForStickyTarget();
+
 			return true;
 		}
 
+
 		private void Menu_SnapToTargetNow(object sender, RoutedEventArgs e)
+		{
+			if (SnapToStickyTargetNow())
+				AppInstance.QueueSaveFromWindow();
+			SnapAfterStick();
+
+		}
+
+
+		public bool StickToWindowUnderMe()
+		{
+			// sample point: near top-left of note (avoid grabbing our own chrome area)
+			int x = (int) (this.Left + 20);
+			int y = (int) (this.Top + 40);
+
+			var myHwnd = new WindowInteropHelper(this).Handle;
+
+			var target = StickIt.Sticky.Services.StickyHitTestService.GetTopmostWindowUnderPoint(
+				x, y,
+				System.Diagnostics.Process.GetCurrentProcess().Id,
+				myHwnd);
+
+
+			if (target == null) return false;
+
+			_stickyTarget = target;
+			EnsureHookForStickyTarget();
+
+			_noteStuckMode = 2;
+			Topmost = false;
+			SnapToStickyTargetNow();
+
+
+			// capture offset
+			if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(target.Hwnd, out var tr))
+			{
+				var notePx = GetNoteTopLeftPx();
+				_stickyOffsetXPx = notePx.X - tr.X;
+				_stickyOffsetYPx = notePx.Y - tr.Y;
+			}
+
+			AppInstance.QueueSaveFromWindow();
+			_stickyTarget = target;
+			EnsureHookForStickyTarget();
+
+			_noteStuckMode = 2;
+			Topmost = false;
+
+			_stickyOffsetXPx = null;
+			_stickyOffsetYPx = null;
+
+			UpdateStickyVisuals();
+
+			// ONE-SHOT snap so user sees it stick immediately
+			var ok = SnapToStickyTargetNow();
+
+			// TEMP: set the menu item header so you can see success without breakpoints
+			if (miSticky_SnapNow != null)
+				miSticky_SnapNow.Header = ok ? "Snap to target now (OK)" : "Snap to target now (FAILED)";
+
+			AppInstance.QueueSaveFromWindow();
+
+			EnterStuckMode2WithTarget(target);
+			return true;
+
+		}
+
+
+
+
+	private void EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target)
+		{
+			_stickyTarget = target;
+			EnsureHookForStickyTarget();
+
+			_noteStuckMode = 2;
+			Topmost = false;
+
+			_stickyOffsetXPx = null;
+			_stickyOffsetYPx = null;
+
+			UpdateStickyVisuals();
+
+			// ONE-SHOT snap so user sees it stick immediately
+			var ok = SnapToStickyTargetNow();
+
+			// TEMP: set the menu item header so you can see success without breakpoints
+			if (miSticky_SnapNow != null)
+				miSticky_SnapNow.Header = ok ? "Snap to target now (OK)" : "Snap to target now (FAILED)";
+
+			AppInstance.QueueSaveFromWindow();
+		}
+
+
+
+
+
+
+		private void Sticky_Auto_Click(object sender, RoutedEventArgs e)
+		{
+			// Get a target by hit test (no side effects)
+			var t = TryGetTargetWindowUnderNote(); // (we’ll implement/fix next)
+			if (t == null)
+			{
+				// Optional: fallback to picker if auto fails
+				Sticky_Pick_Click(sender, e);
+				return;
+			}
+
+			EnterStuckMode2WithTarget(t);
+		}
+		private void Sticky_Pick_Click(object sender, RoutedEventArgs e)
+		{
+			var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
+			if (dlg.ShowDialog() == true && dlg.SelectedTarget != null)
+			{
+				EnterStuckMode2WithTarget(dlg.SelectedTarget);
+			}
+		}
+		private StickIt.Sticky.StickyTargetInfo? TryGetTargetWindowUnderNote()
+		{
+			// Pick a point inside the note (client area), expressed in SCREEN PIXELS.
+			// Using PointToScreen keeps us consistent with your pixel-only sticky math.
+			var pt = PointToScreen(new System.Windows.Point(24, 48)); // small inset from top-left
+			int x = (int) Math.Round(pt.X);
+			int y = (int) Math.Round(pt.Y);
+
+			var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+			return StickIt.Sticky.Services.StickyHitTestService.GetTopmostWindowUnderPoint(
+				x, y,
+				System.Diagnostics.Process.GetCurrentProcess().Id,
+				myHwnd);
+		}
+
+
+
+
+
+
+
+		private void Sticky_NotStuck_Click(object sender, RoutedEventArgs e)
+		{
+			ApplyStuckMode(0);
+			_stickyTarget = null;
+			_stickyOffsetXPx = null;
+			_stickyOffsetYPx = null;
+			AppInstance.QueueSaveFromWindow();
+		}
+
+		private void Sticky_AOT_Click(object sender, RoutedEventArgs e)
+		{
+			ApplyStuckMode(1);
+			// Leaving mode 2 -> clear target/offset
+			_stickyTarget = null;
+			_stickyOffsetXPx = null;
+			_stickyOffsetYPx = null;
+			AppInstance.QueueSaveFromWindow();
+			StopStickyHook();
+		}
+	
+
+		private void ApplyStuckMode(int mode)
+		{
+			if (mode < 0 || mode > 2) mode = 0;
+			_noteStuckMode = mode;
+
+			Topmost = (mode == 1);
+
+			UpdateStickyVisuals();
+		}
+
+		public void EnsureStickyTargetOnLoad()
+		{
+			if (_noteStuckMode != 2)
+				return;
+
+			// 1) Try persisted target rebind
+			if (TryRebindStickyTarget())
+				return;
+
+			// 2) If that fails, try “window under note” (real-life)
+			if (StickToWindowUnderMe())
+				return;
+
+			// 3) Desktop fallback
+			var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
+			if (desk != null)
+			{
+				_stickyTarget = desk;
+				EnsureHookForStickyTarget();
+
+				Topmost = false;
+
+				if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+				{
+					var notePx = GetNoteTopLeftPx();
+					_stickyOffsetXPx = notePx.X - tr.X;
+					_stickyOffsetYPx = notePx.Y - tr.Y;
+				}
+
+				AppInstance.QueueSaveFromWindow();
+				SnapAfterStick();
+
+				EnterStuckMode2WithTarget(desk);
+				return;
+
+			}
+
+			// 4) Last resort: mode 0
+			ApplyStuckMode(0);
+			_stickyTarget = null;
+			_stickyOffsetXPx = null;
+			_stickyOffsetYPx = null;
+			AppInstance.QueueSaveFromWindow();
+			SnapAfterStick();
+
+		}
+
+		private void Sticky_SnapNow_Click(object sender, RoutedEventArgs e)
+		{
+			var ok = SnapToStickyTargetNow();
+			miSticky_SnapNow.Header = ok ? "Snap to target now (OK)" : "Snap to target now (FAILED)";
+			if (ok) AppInstance.QueueSaveFromWindow();
+		}
+
+
+		private void SnapAfterStick()
 		{
 			if (SnapToStickyTargetNow())
 				AppInstance.QueueSaveFromWindow();
 		}
 
 
+		private void Sticky_SubmenuOpened(object sender, RoutedEventArgs e)
+		{
+			// Checkmarks
+			miSticky_NotStuck.IsCheckable = true;
+			miSticky_AOT.IsCheckable = true;
+			miSticky_Auto.IsCheckable = true;
+			miSticky_Pick.IsCheckable = true;
 
+			miSticky_Auto.IsChecked = (_noteStuckMode == 2);
+			miSticky_Pick.IsChecked = false; // picker is an action, not a state
+			miSticky_NotStuck.IsChecked = (_noteStuckMode == 0);
+			miSticky_AOT.IsChecked = (_noteStuckMode == 1);
+
+			// When stuck-to-window, make “Not stuck” read as “Un-stick note”
+			miSticky_NotStuck.Header = (_noteStuckMode == 2) ? "Un-stick note" : "Not stuck";
+
+			// Optional: disable AOT checkbox while in mode 2? (your call)
+			// I’d leave it enabled; it becomes an explicit mode switch.
+			miSticky_SnapNow.IsEnabled = (_noteStuckMode == 2);
+
+		}
+		private void UpdateStickyVisuals()
+		{
+			if (NoteChrome == null) return;
+
+			// NOTE: do NOT touch NoteChrome.BorderBrush (it’s bound to ColorKey pipeline)
+
+			switch (_noteStuckMode)
+			{
+				case 1: // AOT
+					NoteChrome.BorderThickness = new Thickness(6);
+					NoteChrome.Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 3, Opacity = 0.45 };
+					if (StickyAccent != null) StickyAccent.BorderBrush = System.Windows.Media.Brushes.Transparent;
+					break;
+
+				case 2: // Stuck
+					NoteChrome.BorderThickness = new Thickness(12);
+					NoteChrome.Effect = new DropShadowEffect { BlurRadius = 34, ShadowDepth = 0, Opacity = 0.45 };
+					if (StickyAccent != null)
+					{
+						StickyAccent.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(140, 255, 200, 80));
+						StickyAccent.BorderThickness = new Thickness(6);
+					}
+					break;
+
+				default: // Normal
+					NoteChrome.BorderThickness = new Thickness(2);
+					NoteChrome.Effect = new DropShadowEffect { BlurRadius = 14, ShadowDepth = 2, Opacity = 0.25 };
+					if (StickyAccent != null) StickyAccent.BorderBrush = System.Windows.Media.Brushes.Transparent;
+					break;
+			}
+		}
+
+
+
+		//private void EnsureHookForStickyTarget()
+		//{
+		//	if (_winEventHook != null) return;
+
+		//	_winEventHook = new StickIt.Sticky.Services.StickyWinEventHookService();
+		//	_winEventHook.TargetMoved += hwnd =>
+		//	{
+		//		// Only follow when we're in mode 2 and the moved window is our target
+		//		if (_noteStuckMode != 2) return;
+		//		if (_stickyTarget == null) return;
+		//		if (_stickyTarget.Hwnd == IntPtr.Zero) return;
+		//		if (hwnd != _stickyTarget.Hwnd) return;
+
+		//		// Must marshal to UI thread
+		//		Dispatcher.BeginInvoke(new Action(() => SnapToStickyTargetNow()));
+		//	};
+		//	_winEventHook.Hook();
+		//}
+
+		private void EnsureHookForStickyTarget()
+		{
+			// Only needed in Mode 2 and only if we have a target
+			if (_noteStuckMode != 2) { StopHook(); return; }
+			if (_stickyTarget == null) { StopHook(); return; }
+
+			if (_winEventHook == null)
+				_winEventHook = new StickIt.Sticky.Services.StickyWinEventHookService();
+
+			if (!_winEventSubscribed)
+			{
+				_winEventHook.TargetMoved += WinEvent_TargetMoved;
+				_winEventSubscribed = true;
+			}
+
+			_winEventHook.Hook();
+		}
+
+		private void WinEvent_TargetMoved(IntPtr hwnd)
+		{
+			// Only react to our specific sticky target
+			if (_noteStuckMode != 2) return;
+			if (_stickyTarget == null) return;
+			if (_stickyTarget.Hwnd == IntPtr.Zero) return;
+			if (hwnd != _stickyTarget.Hwnd) return;
+
+			// Must marshal to UI thread
+			Dispatcher.BeginInvoke(new Action(() =>
+			{
+				// Still Mode 2 when we arrive?
+				if (_noteStuckMode != 2) return;
+				SnapToStickyTargetNow();
+			}));
+		}
+
+		private void StopHook()
+		{
+			if (_winEventHook == null) return;
+
+			if (_winEventSubscribed)
+			{
+				_winEventHook.TargetMoved -= WinEvent_TargetMoved;
+				_winEventSubscribed = false;
+			}
+
+			_winEventHook.Dispose();
+			_winEventHook = null;
+		}
 
 
 

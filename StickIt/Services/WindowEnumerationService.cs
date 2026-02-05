@@ -4,7 +4,9 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace StickIt.Sticky
+using StickIt.Sticky;
+
+namespace StickIt.Services
 {
 	public static class WindowEnumerationService
 	{

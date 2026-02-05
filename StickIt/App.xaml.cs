@@ -423,21 +423,16 @@ namespace StickIt
 			var windows = _windows.ToArray();
 
 			_state.Notes = windows
-				 .Select(w =>
-				 {
-					 var stuck = w.GetStuckMode();
-					 if (stuck == StuckModeStuckToApp)
-						 stuck = StuckModeUnstuck;
-
-					 return NotePersistMapper.FromWindow(
+				.Select(w => NotePersistMapper.FromWindow(
 					w,
-					stuck,
-					DateTime.UtcNow);
-				 })
-				 .ToList();
+					w.GetStuckMode(),
+					DateTime.UtcNow))
+				.ToList();
 
 			JsonStore.Save(_state);
 		}
+
+
 
 
 

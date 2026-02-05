@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Windows;
 
+using StickIt.Services;
+
 namespace StickIt.Sticky
 {
 	public partial class StickyTargetPickerWindow : Window

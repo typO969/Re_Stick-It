@@ -36,6 +36,12 @@ namespace StickIt.Persistence
 				int stuckModeFinal,
 				DateTime modifiedUtc)
 		{
+
+			var stickyPersist = (stuckModeFinal == 2)
+			? w.GetStickyTargetPersist()
+			: null;
+
+
 			return new NotePersist
 			{
 				Id = w.NoteId,

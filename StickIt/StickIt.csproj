@@ -6,6 +6,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>AnyCPU;x64;x86</Platforms>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="Properties\Icons\stickIt_Main.ico" />

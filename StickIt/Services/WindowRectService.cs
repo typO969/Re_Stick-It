@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace StickIt.Sticky
+namespace StickIt.Sticky.Services
 {
 	public static class WindowRectService
 	{

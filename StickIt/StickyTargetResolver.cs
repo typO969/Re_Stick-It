@@ -2,6 +2,7 @@
 using System.Linq;
 
 using StickIt.Persistence;
+using StickIt.Services;
 
 namespace StickIt.Sticky
 {
