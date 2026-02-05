@@ -496,6 +496,14 @@ namespace StickIt
 			}
 		}
 
+		private void Menu_StickToWindow_Picker(object sender, RoutedEventArgs e)
+		{
+			var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
+			if (dlg.ShowDialog() != true || dlg.SelectedTarget == null) return;
+
+			EnterStuckMode2WithTarget(dlg.SelectedTarget);
+		}
+
 		public bool SnapToStickyTargetNow()
 		{
 			if (_noteStuckMode != 2) return false;
