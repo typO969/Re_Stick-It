@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 namespace StickIt.Sticky.Services
 {
 	/// <summary>
-	/// Global WinEvent hook for window location changes.
-	/// Emits hwnd for EVENT_OBJECT_LOCATIONCHANGE events.
+	/// Global WinEvent hook for sticky-related window events.
+	/// Emits hwnd for location, foreground, and reorder events.
 	/// </summary>
 	public sealed class StickyWinEventHookService : IDisposable
 	{

@@ -6,7 +6,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -18,7 +17,6 @@ using StickIt.Models;
 using StickIt.Services;
 using StickIt.Sticky.Services;
 
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 using WpfApplication = System.Windows.Application;
 
@@ -39,7 +37,7 @@ namespace StickIt
 		private StickIt.Sticky.Services.StickyWinEventHookService? _winEventHook;
 		private bool _winEventSubscribed;
 
-		private System.Windows.Threading.DispatcherTimer _stickyCoalesceTimer;
+		private DispatcherTimer? _stickyCoalesceTimer;
 		private bool _stickySnapPending;
 
 
@@ -130,7 +128,7 @@ namespace StickIt
 		public bool GetIsMinimized() => this.WindowState == WindowState.Minimized;
 		public void SetIsMinimized(bool minimized)
 		{
-			if (minimized) this.WindowState = WindowState.Minimized;
+			WindowState = minimized ? WindowState.Minimized : WindowState.Normal;
 		}
 
 		public event EventHandler? NoteTextChanged;
@@ -258,14 +256,6 @@ namespace StickIt
 
 		}
 
-		private void StopStickyHook()
-		{
-			if (_winEventHook == null) return;
-			_winEventHook.Dispose();
-			_winEventHook = null;
-		}
-
-
 		private void btnMinimize_Click(object sender, RoutedEventArgs e)
 		{
 			WindowState = WindowState.Minimized;
@@ -278,77 +268,45 @@ namespace StickIt
 
 			if (next == 2)
 			{
-				// Mode 2 entry path #1: "Stick note" (auto target under note)
-				if (!StickToWindowUnderMe())
-				{
-					// Fallback #1: user picks a window explicitly
-					var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
-					if (dlg.ShowDialog() == true && dlg.SelectedTarget != null)
-					{
-						_stickyTarget = dlg.SelectedTarget;
-						EnsureHookForStickyTarget();
-
-						_noteStuckMode = 2;
-						Topmost = false;
-
-						if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
-						{
-							var notePx = GetNoteTopLeftPx();
-							_stickyOffsetXPx = notePx.X - tr.X;
-							_stickyOffsetYPx = notePx.Y - tr.Y;
-						}
-
-						AppInstance.QueueSaveFromWindow();
-						return;
-					}
-
-					// Fallback #2: stick to Desktop (so mode 2 can still persist safely)
-					var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
-					if (desk != null)
-					{
-						_stickyTarget = desk;
-						EnsureHookForStickyTarget();
-
-						_noteStuckMode = 2;
-						Topmost = false;
-
-						if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
-						{
-							var notePx = GetNoteTopLeftPx();
-							_stickyOffsetXPx = notePx.X - tr.X;
-							_stickyOffsetYPx = notePx.Y - tr.Y;
-						}
-
-						AppInstance.QueueSaveFromWindow();
-						return;
-					}
-
-					// Last resort: bail to normal
-					ApplyStuckMode(0);
-					AppInstance.QueueSaveFromWindow();
-					StopStickyHook();
+				if (StickToWindowUnderMe())
 					return;
 
+				var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
+				if (dlg.ShowDialog() == true && dlg.SelectedTarget != null)
+				{
+					EnterStuckMode2WithTarget(dlg.SelectedTarget);
+					return;
 				}
 
-				// StickToWindowUnderMe() already set mode/offset + queued save.
+				var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
+				if (desk != null)
+				{
+					EnterStuckMode2WithTarget(desk);
+					return;
+				}
+
+				ApplyStuckMode(0);
+				_stickyTarget = null;
+				_stickyOffsetXPx = null;
+				_stickyOffsetYPx = null;
+				StopHook();
+				AppInstance.QueueSaveFromWindow();
 				return;
 			}
 
-			// Modes 0 and 1 are pure state changes
 			ApplyStuckMode(next);
-			StopStickyHook();
+			StopHook();
 
-			// Clearing behavior when leaving mode 2 (or landing on 0)
 			if (next == 0)
 			{
 				_stickyTarget = null;
 				_stickyOffsetXPx = null;
 				_stickyOffsetYPx = null;
 			}
-			StopStickyHook();
+
 			AppInstance.QueueSaveFromWindow();
 		}
+
 
 
 
@@ -437,29 +395,6 @@ namespace StickIt
 				AppInstance.QueueSaveFromWindow(); // we’ll add this tiny helper in App
 			}
 		}
-
-		private void Menu_Sticky(object sender, RoutedEventArgs e)
-		{
-			// Cycle: 0 -> 1 -> 2 -> 0 ...
-			var next = (_noteStuckMode + 1) % 3;
-
-			ApplyStuckMode(next);
-
-			// Side-effects:
-			// 0: clear stick target state
-			// 1: Topmost only
-			// 2: keep existing target if any; otherwise user must pick later
-			if (next == 0)
-			{
-				_stickyTarget = null;
-				_stickyOffsetXPx = null;
-				_stickyOffsetYPx = null;
-			}
-
-			// Ensure topmost matches the new mode (ApplyStuckMode already does this)
-			AppInstance.QueueSaveFromWindow();
-		}
-
 
 		private void Menu_Minimize(object sender, RoutedEventArgs e)
 		{
@@ -674,7 +609,7 @@ namespace StickIt
 
 		public void ClearStickyTarget()
 		{
-			_noteStuckMode = 0;
+			StuckMode = 0;
 			Topmost = false;
 			_stickyTarget = null;
 			_stickyOffsetXPx = null;
@@ -725,15 +660,6 @@ namespace StickIt
 		}
 
 
-		private void Menu_SnapToTargetNow(object sender, RoutedEventArgs e)
-		{
-			if (SnapToStickyTargetNow())
-				AppInstance.QueueSaveFromWindow();
-			SnapAfterStick();
-
-		}
-
-
 		public bool StickToWindowUnderMe()
 		{
 			var target = TryGetTargetWindowUnderNote();
@@ -750,7 +676,7 @@ namespace StickIt
 	private void EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target)
 		{
 			_stickyTarget = target;
-			_noteStuckMode = 2;
+			StuckMode = 2;
 			Topmost = false;
 
 			_stickyOffsetXPx = null;
@@ -836,14 +762,14 @@ namespace StickIt
 			_stickyOffsetXPx = null;
 			_stickyOffsetYPx = null;
 			AppInstance.QueueSaveFromWindow();
-			StopStickyHook();
+			StopHook();
 		}
 	
 
 		private void ApplyStuckMode(int mode)
 		{
 			if (mode < 0 || mode > 2) mode = 0;
-			_noteStuckMode = mode;
+			StuckMode = mode;
 
 			Topmost = (mode == 1);
 
@@ -859,7 +785,7 @@ namespace StickIt
 			if (TryRebindStickyTarget())
 				return;
 
-			// 2) If that fails, try “window under note” (real-life)
+			// 2) If that fails, try “window under note”
 			if (StickToWindowUnderMe())
 				return;
 
@@ -867,24 +793,8 @@ namespace StickIt
 			var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
 			if (desk != null)
 			{
-				_stickyTarget = desk;
-				EnsureHookForStickyTarget();
-
-				Topmost = false;
-
-				if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
-				{
-					var notePx = GetNoteTopLeftPx();
-					_stickyOffsetXPx = notePx.X - tr.X;
-					_stickyOffsetYPx = notePx.Y - tr.Y;
-				}
-
-				AppInstance.QueueSaveFromWindow();
-				SnapAfterStick();
-
 				EnterStuckMode2WithTarget(desk);
 				return;
-
 			}
 
 			// 4) Last resort: mode 0
@@ -892,10 +802,10 @@ namespace StickIt
 			_stickyTarget = null;
 			_stickyOffsetXPx = null;
 			_stickyOffsetYPx = null;
+			StopHook();
 			AppInstance.QueueSaveFromWindow();
-			SnapAfterStick();
-
 		}
+
 
 		private void Sticky_SnapNow_Click(object sender, RoutedEventArgs e)
 		{
@@ -904,12 +814,6 @@ namespace StickIt
 			if (ok) AppInstance.QueueSaveFromWindow();
 		}
 
-
-		private void SnapAfterStick()
-		{
-			if (SnapToStickyTargetNow())
-				AppInstance.QueueSaveFromWindow();
-		}
 
 
 		private void Sticky_SubmenuOpened(object sender, RoutedEventArgs e)
@@ -966,25 +870,6 @@ namespace StickIt
 		}
 
 
-
-		//private void EnsureHookForStickyTarget()
-		//{
-		//	if (_winEventHook != null) return;
-
-		//	_winEventHook = new StickIt.Sticky.Services.StickyWinEventHookService();
-		//	_winEventHook.TargetMoved += hwnd =>
-		//	{
-		//		// Only follow when we're in mode 2 and the moved window is our target
-		//		if (_noteStuckMode != 2) return;
-		//		if (_stickyTarget == null) return;
-		//		if (_stickyTarget.Hwnd == IntPtr.Zero) return;
-		//		if (hwnd != _stickyTarget.Hwnd) return;
-
-		//		// Must marshal to UI thread
-		//		Dispatcher.BeginInvoke(new Action(() => SnapToStickyTargetNow()));
-		//	};
-		//	_winEventHook.Hook();
-		//}
 
 		private void EnsureHookForStickyTarget()
 		{
