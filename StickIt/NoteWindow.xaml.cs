@@ -566,28 +566,7 @@ namespace StickIt
 			var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
 			if (dlg.ShowDialog() != true || dlg.SelectedTarget == null) return;
 
-		
-			_stickyTarget = dlg.SelectedTarget;
-			EnsureHookForStickyTarget();
-
-
-			// capture current offset (note position relative to target top-left)
-			if (WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
-			{
-				var notePx = GetNoteTopLeftPx();
-				_stickyOffsetXPx = notePx.X - tr.X;
-				_stickyOffsetYPx = notePx.Y - tr.Y;
-			}
-
-
-			_noteStuckMode = 2;
-			Topmost = false;
-
-			// TEMP: store somewhere canonical later (NotePersist will carry it)
-			// For now, you can stash it in NoteProperties.StickyTarget as a string if needed,
-			// or we do Step 4 to thread it cleanly into NotePersistMapper/Json.
-
-			AppInstance.QueueSaveFromWindow();
+			EnterStuckMode2WithTarget(dlg.SelectedTarget);
 		}
 
 		public bool SnapToStickyTargetNow()
@@ -757,60 +736,12 @@ namespace StickIt
 
 		public bool StickToWindowUnderMe()
 		{
-			// sample point: near top-left of note (avoid grabbing our own chrome area)
-			int x = (int) (this.Left + 20);
-			int y = (int) (this.Top + 40);
-
-			var myHwnd = new WindowInteropHelper(this).Handle;
-
-			var target = StickIt.Sticky.Services.StickyHitTestService.GetTopmostWindowUnderPoint(
-				x, y,
-				System.Diagnostics.Process.GetCurrentProcess().Id,
-				myHwnd);
-
-
-			if (target == null) return false;
-
-			_stickyTarget = target;
-			EnsureHookForStickyTarget();
-
-			_noteStuckMode = 2;
-			Topmost = false;
-			SnapToStickyTargetNow();
-
-
-			// capture offset
-			if (StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(target.Hwnd, out var tr))
-			{
-				var notePx = GetNoteTopLeftPx();
-				_stickyOffsetXPx = notePx.X - tr.X;
-				_stickyOffsetYPx = notePx.Y - tr.Y;
-			}
-
-			AppInstance.QueueSaveFromWindow();
-			_stickyTarget = target;
-			EnsureHookForStickyTarget();
-
-			_noteStuckMode = 2;
-			Topmost = false;
-
-			_stickyOffsetXPx = null;
-			_stickyOffsetYPx = null;
-
-			UpdateStickyVisuals();
-
-			// ONE-SHOT snap so user sees it stick immediately
-			var ok = SnapToStickyTargetNow();
-
-			// TEMP: set the menu item header so you can see success without breakpoints
-			if (miSticky_SnapNow != null)
-				miSticky_SnapNow.Header = ok ? "Snap to target now (OK)" : "Snap to target now (FAILED)";
-
-			AppInstance.QueueSaveFromWindow();
+			var target = TryGetTargetWindowUnderNote();
+			if (target == null)
+				return false;
 
 			EnterStuckMode2WithTarget(target);
 			return true;
-
 		}
 
 
@@ -819,17 +750,18 @@ namespace StickIt
 	private void EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target)
 		{
 			_stickyTarget = target;
-			EnsureHookForStickyTarget();
-
 			_noteStuckMode = 2;
 			Topmost = false;
 
 			_stickyOffsetXPx = null;
 			_stickyOffsetYPx = null;
+			_lastTargetX = null;
+			_lastTargetY = null;
 
+			EnsureHookForStickyTarget();
 			UpdateStickyVisuals();
 
-			// ONE-SHOT snap so user sees it stick immediately
+			// ONE-SHOT snap so user sees it stick immediately and z-order is corrected.
 			var ok = SnapToStickyTargetNow();
 
 			// TEMP: set the menu item header so you can see success without breakpoints
@@ -1074,18 +1006,23 @@ namespace StickIt
 
 		private void WinEvent_TargetMoved(IntPtr hwnd)
 		{
-			// Only react to our specific sticky target
 			if (_noteStuckMode != 2) return;
 			if (_stickyTarget == null) return;
 			if (_stickyTarget.Hwnd == IntPtr.Zero) return;
-			if (hwnd != _stickyTarget.Hwnd) return;
 
 			// Must marshal to UI thread
 			Dispatcher.BeginInvoke(new Action(() =>
 			{
-				// Still Mode 2 when we arrive?
 				if (_noteStuckMode != 2) return;
-				SnapToStickyTargetNow();
+				if (_stickyTarget == null) return;
+				if (_stickyTarget.Hwnd == IntPtr.Zero) return;
+
+				// Foreground/reorder events can arrive with hwnd != target.
+				// For sticky mode 2, always re-assert our position just above the target.
+				if (hwnd == _stickyTarget.Hwnd)
+					RequestStickySnap();
+				else
+					SnapToStickyTargetNow();
 			}));
 		}
 
