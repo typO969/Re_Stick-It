@@ -4,8 +4,8 @@ using System.Runtime.InteropServices;
 namespace StickIt.Sticky.Services
 {
 	/// <summary>
-	/// Global WinEvent hook for window location changes.
-	/// Emits hwnd for EVENT_OBJECT_LOCATIONCHANGE events.
+	/// Global WinEvent hook for sticky-related window events.
+	/// Emits hwnd for location, foreground, and reorder events.
 	/// </summary>
 	public sealed class StickyWinEventHookService : IDisposable
 	{
@@ -15,6 +15,8 @@ namespace StickIt.Sticky.Services
 		private WinEventProc? _proc; // keep delegate alive
 		private bool _disposed;
 
+		private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+		private const uint EVENT_OBJECT_REORDER = 0x8004;
 		private const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
 		private const int OBJID_WINDOW = 0x00000000;
 
@@ -30,7 +32,7 @@ namespace StickIt.Sticky.Services
 
 			// Global hook; we filter in the consumer (NoteWindow) by hwnd
 			_hook = SetWinEventHook(
-				EVENT_OBJECT_LOCATIONCHANGE,
+				EVENT_SYSTEM_FOREGROUND,
 				EVENT_OBJECT_LOCATIONCHANGE,
 				IntPtr.Zero,
 				_proc,
@@ -55,8 +57,10 @@ namespace StickIt.Sticky.Services
 			uint dwEventThread,
 			uint dwmsEventTime)
 		{
-			// Only real top-level window moves (avoid scrollbar/object noise)
-			if (eventType != EVENT_OBJECT_LOCATIONCHANGE) return;
+			if (eventType != EVENT_OBJECT_LOCATIONCHANGE &&
+				eventType != EVENT_SYSTEM_FOREGROUND &&
+				eventType != EVENT_OBJECT_REORDER)
+				return;
 			if (hwnd == IntPtr.Zero) return;
 			if (idObject != OBJID_WINDOW) return;
 			if (idChild != 0) return;
