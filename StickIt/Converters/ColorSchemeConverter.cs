@@ -31,21 +31,14 @@ namespace StickIt.Converters
 			);
 	}
 
-	internal sealed class ColorSchemeResult
-	{
-		public string SanitizedName { get; }
-		public IReadOnlyDictionary<ColorComponent, RgbVector> Components { get; }
-		public IReadOnlyDictionary<string, RgbVector> NamedVectors { get; }
-
-		public ColorSchemeResult(
+	internal sealed class ColorSchemeResult(
 			 string sanitizedName,
 			 IReadOnlyDictionary<ColorComponent, RgbVector> components,
 			 IReadOnlyDictionary<string, RgbVector> namedVectors)
-		{
-			SanitizedName = sanitizedName;
-			Components = components;
-			NamedVectors = namedVectors;
-		}
+	{
+		public string SanitizedName { get; } = sanitizedName;
+		public IReadOnlyDictionary<ColorComponent, RgbVector> Components { get; } = components;
+		public IReadOnlyDictionary<string, RgbVector> NamedVectors { get; } = namedVectors;
 
 		public RgbVector GetComponent(ColorComponent component) => Components[component];
 	}
@@ -229,7 +222,7 @@ namespace StickIt.Converters
 				throw new FormatException($"Hex value '{hex}' must contain exactly 6 characters.");
 			}
 
-			byte ParseComponent(int start) => byte.Parse(value.Substring(start, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+			byte ParseComponent(int start) => byte.Parse(value.AsSpan(start, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
 			return new RgbVector(ParseComponent(0), ParseComponent(2), ParseComponent(4));
 		}

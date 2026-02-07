@@ -25,15 +25,15 @@ namespace StickIt.Services
 				ContextMenuStrip = BuildMenu(onNewNote, onMinimizeAll, onRestoreAll, onSaveAll, onShowNotes, onExit)
 			};
 
-			_ni.MouseUp += (_, e) =>
-			{
-				// Left click: create a new note
-				if (e.Button == MouseButtons.Left)
-					onNewNote();
-			};
+         _ni.MouseUp += (_, e) =>
+         {
+            if (e.Button == MouseButtons.Left)
+               System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(onNewNote));
+         };
 
 
-			_ni.DoubleClick += (_, __) => onShowNotes();
+
+         _ni.DoubleClick += (_, __) => onShowNotes();
 
 		}
 
@@ -48,16 +48,34 @@ namespace StickIt.Services
 		{
 			var menu = new ContextMenuStrip();
 
-			menu.Items.Add(new ToolStripMenuItem("New note  \tCtrl+N", null, (_, __) => onNewNote()));
+         menu.Items.Add(new ToolStripMenuItem("New note  \tCtrl+N", null, (_, __) =>
+         {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(onNewNote));
+         }));
+         menu.Items.Add(new ToolStripSeparator());
+			menu.Items.Add(new ToolStripMenuItem("Minimize all", null, (_, __) =>
+         {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(onMinimizeAll));
+         }));
+			menu.Items.Add(new ToolStripMenuItem("Restore all", null, (_, __) =>
+         {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(onRestoreAll));
+         })); 
 			menu.Items.Add(new ToolStripSeparator());
-			menu.Items.Add(new ToolStripMenuItem("Minimize all", null, (_, __) => onMinimizeAll()));
-			menu.Items.Add(new ToolStripMenuItem("Restore all", null, (_, __) => onRestoreAll()));
+			menu.Items.Add(new ToolStripMenuItem("Show notes", null, (_, __) =>
+         {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(onShowNotes));
+         })); 
 			menu.Items.Add(new ToolStripSeparator());
-			menu.Items.Add(new ToolStripMenuItem("Show notes", null, (_, __) => onShowNotes()));
+			menu.Items.Add(new ToolStripMenuItem("Save all notes now", null, (_, __) =>
+         {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(onSaveAll));
+         }));
 			menu.Items.Add(new ToolStripSeparator());
-			menu.Items.Add(new ToolStripMenuItem("Save all notes now", null, (_, __) => onSaveAll()));
-			menu.Items.Add(new ToolStripSeparator());
-			menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, __) => onExit()));
+			menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, __) =>
+         {
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(new Action(onExit));
+         }));
 
 			return menu;
 		}

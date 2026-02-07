@@ -26,11 +26,15 @@ namespace StickIt
 		private System.Threading.Mutex? _singleInstanceMutex;
 		private const int MaxNotesToAutoOpen = 25;
 
+      private double _nextSpawnLeft = 200;
+      private double _nextSpawnTop = 200;
 
 
 
-		// Debounce saving so we don’t write on every keystroke/mouse move
-		private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+
+
+      // Debounce saving so we don’t write on every keystroke/mouse move
+      private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
 
 		protected override void OnStartup(StartupEventArgs e)
 		{
@@ -108,19 +112,28 @@ namespace StickIt
 
 			var icon = new System.Drawing.Icon(iconPath);
 
-			_tray = new StickIt.Services.TrayIconService(
-				 icon,
-				 CreateNewNoteFromTray,
-				 MinimizeAllNotes,
-				 RestoreAllNotes,
-				 SaveAllNotesNow,
-				 ShowAllNotes,
-				 ShutdownRequested);
+         _tray = new StickIt.Services.TrayIconService(
+             icon,
+
+             // New note
+             () => Dispatcher.BeginInvoke(new Action(() => CreateNewNoteNear(null))),
+             // Minimize all
+             () => Dispatcher.BeginInvoke(new Action(MinimizeAllNotes)),
+             // Restore all
+             () => Dispatcher.BeginInvoke(new Action(RestoreAllNotes)),
+             // Save all
+             () => Dispatcher.BeginInvoke(new Action(SaveAllNotesNow)),
+             // Show notes
+             () => Dispatcher.BeginInvoke(new Action(ShowAllNotes)),
+             // Exit
+             () => Dispatcher.BeginInvoke(new Action(ShutdownRequested))
+         );
 
 
 
 
-			Exit += (_, __) =>
+
+         Exit += (_, __) =>
 			{
 				_saveTimer.Stop();
 				_tray?.Dispose();
@@ -160,7 +173,82 @@ namespace StickIt
 			}
 		}
 
-		public void ShutdownRequested()
+      private System.Windows.Point FindNonOverlappingPosition(double desiredLeft, double desiredTop, double w, double h)
+      {
+         double left = SystemParameters.VirtualScreenLeft;
+         double top = SystemParameters.VirtualScreenTop;
+         double width = SystemParameters.VirtualScreenWidth;
+         double height = SystemParameters.VirtualScreenHeight;
+
+         const int step = 24;
+         const double margin = 20;
+
+         double minX = left + margin;
+         double minY = top + margin;
+         double maxX = (left + width) - w - margin;
+         double maxY = (top + height) - h - margin;
+
+         // Clamp desired start
+         double startX = Math.Max(minX, Math.Min(maxX, desiredLeft));
+         double startY = Math.Max(minY, Math.Min(maxY, desiredTop));
+
+         // Occupied rects = currently open note windows
+         var occupied = _windows
+            .Where(win => win != null && win.IsLoaded)
+            .Select(win =>
+            {
+               // Use RestoreBounds if minimized, and fall back to the intended new note size.
+               var b = (win.WindowState == WindowState.Minimized) ? win.RestoreBounds : new Rect(win.Left, win.Top, win.Width, win.Height);
+
+               double ow = (b.Width > 1) ? b.Width : w;
+               double oh = (b.Height > 1) ? b.Height : h;
+
+               return new Rect(b.Left, b.Top, ow, oh);
+            })
+            .ToList();
+
+
+         // Quick accept if free
+         var startRect = new Rect(startX, startY, w, h);
+         if (!occupied.Any(r => r.IntersectsWith(startRect)))
+            return new System.Windows.Point(startX, startY);
+
+         // Scan outward in a simple expanding pattern
+         for (int ring = 1; ring < 200; ring++)
+         {
+            double dx = ring * step;
+            double dy = ring * step;
+
+            var candidates = new[]
+            {
+         new System.Windows.Point(startX + dx, startY),
+         new System.Windows.Point(startX - dx, startY),
+         new System.Windows.Point(startX, startY + dy),
+         new System.Windows.Point(startX, startY - dy),
+                         
+         new System.Windows.Point(startX + dx, startY + dy),
+         new System.Windows.Point(startX + dx, startY - dy),
+         new System.Windows.Point(startX - dx, startY + dy),
+         new System.Windows.Point(startX - dx, startY - dy),
+      };
+
+            foreach (var c in candidates)
+            {
+               double cx = Math.Max(minX, Math.Min(maxX, c.X));
+               double cy = Math.Max(minY, Math.Min(maxY, c.Y));
+
+               var r = new Rect(cx, cy, w, h);
+               if (!occupied.Any(o => o.IntersectsWith(r)))
+                  return new System.Windows.Point(cx, cy);
+            }
+         }
+
+         // Last resort: return clamped desired
+         return new System.Windows.Point(startX, startY);
+      }
+
+
+      public void ShutdownRequested()
 		{
 			if (_isShuttingDown) return;
 			_isShuttingDown = true;
@@ -198,9 +286,14 @@ namespace StickIt
 		}
 
 
-		public void CreateNewNoteFromTray() => CreateNewNoteNear(null);
+      public void CreateNewNoteFromTray()
+      {
+         // NotifyIcon can raise events via WinForms plumbing; force onto WPF UI thread.
+         Dispatcher.BeginInvoke(new Action(() => CreateNewNoteNear(null)));
+      }
 
-		public void NotifyStillRunningIfLastNoteClosed()
+
+      public void NotifyStillRunningIfLastNoteClosed()
 		{
 			if (_tray == null) return;
 			if (_shownStillRunningNoticeThisSession) return;
@@ -264,10 +357,7 @@ namespace StickIt
 			PersistAllWindows();
 		}
 
-
-
-
-		public void SaveAllNotesNow()
+   	public void SaveAllNotesNow()
 		{
 			_saveTimer.Stop();
 			FlushPendingUiEdits();
@@ -438,23 +528,45 @@ namespace StickIt
 
 		public void CreateNewNoteNear(NoteWindow? anchor = null)
 		{
-			var p = new NotePersist
-			{
-				Left = anchor != null ? anchor.Left + 20 : 200,
-				Top = anchor != null ? anchor.Top + 20 : 200,
-				Width = 400,
-				Height = 400,
-				Title = "Untitled",
-				Text = "",
-				ColorKey = nameof(NoteColors.NoteColor.ThreeMYellow),
-				StuckMode = 0,
-				IsMinimized = false,
-				CreatedUtc = DateTime.UtcNow,
-				ModifiedUtc = DateTime.UtcNow,
-			};
+         const double newW = 400;
+         const double newH = 400;
 
-			// Add to state so it exists even if we crash before debounce tick
-			_state.Notes.Add(p);
+         double desiredLeft, desiredTop;
+
+         if (anchor != null)
+         {
+            desiredLeft = anchor.Left + 20;
+            desiredTop = anchor.Top + 20;
+         } else
+         {
+            desiredLeft = _nextSpawnLeft;
+            desiredTop = _nextSpawnTop;
+
+            _nextSpawnLeft += 24;
+            _nextSpawnTop += 24;
+         }
+
+         var pos = FindNonOverlappingPosition(desiredLeft, desiredTop, newW, newH);
+
+
+         var p = new NotePersist
+         {
+            Left = pos.X,
+            Top = pos.Y,
+            Width = newW,
+            Height = newH,
+            Title = "Untitled",
+            Text = "",
+            ColorKey = nameof(NoteColors.NoteColor.ThreeMYellow),
+            StuckMode = 0,
+            IsMinimized = false,
+            CreatedUtc = DateTime.UtcNow,
+            ModifiedUtc = DateTime.UtcNow,
+         };
+
+
+         // Add to state so it exists even if we crash before debounce tick
+         _state.Notes.Add(p);
 			JsonStore.Save(_state);
 
 			SpawnWindow(p);

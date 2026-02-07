@@ -40,11 +40,12 @@ namespace StickIt
 		private DispatcherTimer? _stickyCoalesceTimer;
 		private bool _stickySnapPending;
 
+      private IntPtr _prevWin32Owner = IntPtr.Zero;
 
 
 
 
-		public event PropertyChangedEventHandler? PropertyChanged;
+      public event PropertyChangedEventHandler? PropertyChanged;
 		private void OnPropertyChanged([CallerMemberName] string? name = null) =>
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
@@ -222,7 +223,14 @@ namespace StickIt
 			txtNoteContent.Document.Blocks.Add(new Paragraph(new Run(text ?? "")));
 		}
 
-		public string GetText()
+      protected override void OnClosed(EventArgs e)
+      {
+         try { ClearLocalAotOwner(); } catch { }
+         base.OnClosed(e);
+      }
+
+
+      public string GetText()
 		{
 			var range = new TextRange(
 				txtNoteContent.Document.ContentStart,
@@ -251,10 +259,10 @@ namespace StickIt
 
 		private void btnClose_Click(object sender, RoutedEventArgs e)
 		{
-			Close();
+         Close();
 			_followTimer.Stop();
-
-		}
+      
+      }
 
 		private void btnMinimize_Click(object sender, RoutedEventArgs e)
 		{
@@ -307,13 +315,58 @@ namespace StickIt
 			AppInstance.QueueSaveFromWindow();
 		}
 
+      private void ApplyFontToSelection(string familyName, double sizePt, bool bold, bool italic)
+      {
+         var rtb = txtNoteContent;
+         var sel = rtb.Selection;
+
+         // Selection empty => applies to caret typing style (does NOT reformat whole note)
+         TextRange range = new TextRange(sel.Start, sel.End);
+
+         range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Drawing.FontFamily(familyName));
+         range.ApplyPropertyValue(TextElement.FontSizeProperty, sizePt);
+         range.ApplyPropertyValue(TextElement.FontWeightProperty, bold ? FontWeights.Bold : FontWeights.Normal);
+         range.ApplyPropertyValue(TextElement.FontStyleProperty, italic ? FontStyles.Italic : FontStyles.Normal);
+
+         // Persist per-note defaults
+         _note!.FontFamily = familyName;
+         _note!.FontSize = sizePt;
+
+         NoteTextChanged?.Invoke(this, EventArgs.Empty);
+      }
+
+      private void InitializeTypingDefaultsFromNote()
+      {
+         if (_note == null) return;
+
+         // fallbacks
+         string familyName = string.IsNullOrWhiteSpace(_note.FontFamily) ? "Segoe UI" : _note.FontFamily;
+         double sizePt = (_note.FontSize > 0) ? _note.FontSize : 12.0;
+
+         var rtb = txtNoteContent;
+
+         // IMPORTANT: apply to an *empty* range at the caret/document start
+         // so existing content is not reformatted.
+         TextPointer start = rtb.CaretPosition ?? rtb.Document.ContentStart;
+         if (start == null) start = rtb.Document.ContentStart;
+
+         // ensure we're at an insertion position
+         start = start.GetInsertionPosition(LogicalDirection.Forward) ?? rtb.Document.ContentStart;
+
+         var range = new TextRange(start, start); // empty range == typing style only
+         range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Drawing.FontFamily(familyName));
+         range.ApplyPropertyValue(TextElement.FontSizeProperty, sizePt);
+      }
 
 
 
 
 
 
-		public string? GetRtf()
+
+
+
+      public string? GetRtf()
 		{
 			try
 			{
@@ -444,14 +497,59 @@ namespace StickIt
 			AppInstance.RestoreHiddenNotes();
 		}
 
-		// Placeholders (disabled now; handler exists in case you enable later)
-		private void Menu_FontSettings(object sender, RoutedEventArgs e) { }
-		private void Menu_LoadNotes(object sender, RoutedEventArgs e) { }
+      // Placeholders (disabled now; handler exists in case you enable later)
+      private void Menu_FontSettings(object sender, RoutedEventArgs e)
+      {
+         var cur = GetSelectionFontInfo();
+
+         using (var dlg = new System.Windows.Forms.FontDialog())
+         {
+            dlg.ShowColor = false;
+            dlg.ShowEffects = false;
+            dlg.Font = cur;
+
+            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+               return;
+
+            var f = dlg.Font;
+
+            ApplyFontToSelection(
+               f.FontFamily.Name,
+               f.SizeInPoints,
+               f.Bold,
+               f.Italic);
+         }
+      }
+
+      private void Menu_LoadNotes(object sender, RoutedEventArgs e) { }
 		private void Menu_Preferences(object sender, RoutedEventArgs e) { }
 		private void Menu_NoteManager(object sender, RoutedEventArgs e) { }
 
+      private System.Drawing.Font GetSelectionFontInfo()
+      {
+         var sel = txtNoteContent.Selection;
 
-		private void txtNoteTitle_select(object sender, MouseButtonEventArgs e)
+         object ff = sel.GetPropertyValue(TextElement.FontFamilyProperty);
+         object fs = sel.GetPropertyValue(TextElement.FontSizeProperty);
+         object fw = sel.GetPropertyValue(TextElement.FontWeightProperty);
+         object fst = sel.GetPropertyValue(TextElement.FontStyleProperty);
+
+         string family = (ff is System.Windows.Media.FontFamily fam) ? fam.Source : "Segoe UI";
+         double size = (fs is double d && d > 0) ? d : 12.0;
+
+         bool bold = (fw is FontWeight w && w == FontWeights.Bold);
+         bool italic = (fst is System.Windows.FontStyle s && s == FontStyles.Italic);
+
+         var style = System.Drawing.FontStyle.Regular;
+         if (bold) style |= System.Drawing.FontStyle.Bold;
+         if (italic) style |= System.Drawing.FontStyle.Italic;
+
+         return new System.Drawing.Font(family, (float)size, style);
+      }
+
+
+
+      private void txtNoteTitle_select(object sender, MouseButtonEventArgs e)
 		{
 			// Ensure we have a note and the TextBox exists
 			if (_note == null || txtNoteTitle == null) return;
@@ -564,7 +662,36 @@ namespace StickIt
 
 
 
-		private StickIt.Sticky.StickyTargetInfo? _stickyTarget;
+      #region LOCAL_AOT (Owned window)
+
+      private void ApplyLocalAotOwner(IntPtr targetHwnd)
+      {
+         var myHwnd = new WindowInteropHelper(this).Handle;
+         if (myHwnd == IntPtr.Zero || targetHwnd == IntPtr.Zero) return;
+
+         // save previous owner once per "enter mode 2"
+         if (_prevWin32Owner == IntPtr.Zero)
+            _prevWin32Owner = StickIt.Services.LocalAotOwnerService.GetOwner(myHwnd);
+
+         StickIt.Services.LocalAotOwnerService.SetOwner(myHwnd, targetHwnd);
+      }
+
+      private void ClearLocalAotOwner()
+      {
+         var myHwnd = new WindowInteropHelper(this).Handle;
+         if (myHwnd == IntPtr.Zero) return;
+
+         // restore previous owner (usually zero)
+         StickIt.Services.LocalAotOwnerService.SetOwner(myHwnd, _prevWin32Owner);
+         _prevWin32Owner = IntPtr.Zero;
+      }
+
+      #endregion
+
+
+
+
+      private StickIt.Sticky.StickyTargetInfo? _stickyTarget;
 
 		public void SetStickyTarget(StickIt.Persistence.StickyTargetPersist? p)
 		{
@@ -676,7 +803,11 @@ namespace StickIt
 	private void EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target)
 		{
 			_stickyTarget = target;
-			StuckMode = 2;
+
+         // LOCAL AOT: make note owned by target (stays above target, not globally TopMost)
+         ApplyLocalAotOwner(target.Hwnd);
+
+         StuckMode = 2;
 			Topmost = false;
 
 			_stickyOffsetXPx = null;
@@ -744,8 +875,20 @@ namespace StickIt
 
 
 
+      private void ApplyStuckMode(int mode)
+      {
+         if (mode < 0 || mode > 2) mode = 0;
 
-		private void Sticky_NotStuck_Click(object sender, RoutedEventArgs e)
+         // if we are leaving mode 2, undo local AOT owner
+         if (_noteStuckMode == 2 && mode != 2)
+            ClearLocalAotOwner();
+         
+         StuckMode = mode;
+         Topmost = (mode == 1);
+         UpdateStickyVisuals();
+      }
+
+      private void Sticky_NotStuck_Click(object sender, RoutedEventArgs e)
 		{
 			ApplyStuckMode(0);
 			_stickyTarget = null;
@@ -763,17 +906,6 @@ namespace StickIt
 			_stickyOffsetYPx = null;
 			AppInstance.QueueSaveFromWindow();
 			StopHook();
-		}
-	
-
-		private void ApplyStuckMode(int mode)
-		{
-			if (mode < 0 || mode > 2) mode = 0;
-			StuckMode = mode;
-
-			Topmost = (mode == 1);
-
-			UpdateStickyVisuals();
 		}
 
 		public void EnsureStickyTargetOnLoad()

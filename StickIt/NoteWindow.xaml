@@ -541,7 +541,7 @@
                      HorizontalAlignment="Right"
                      Orientation="Horizontal">
 
-                     <!--  left,right,top.bottom  -->
+                     <!--  left,right,top,bottom  -->
                      <Button
                         x:Name="btnPin"
                         Margin="0,0,2,0"
