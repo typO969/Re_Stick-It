@@ -1,0 +1,189 @@
+ROADMAP for Re_StickIt
+
+**Goal: “Professional, reliable sticky notes with formatting, semi-based in reality of how real post-it notes function"
+---
+
+# ✅ What Is Solid Now
+
+## 1️⃣ Core Window Architecture
+
+* WPF (.NET)
+* Minimal MVVM
+* NoteModel + NoteProperties separation
+* Autosave via `NoteTextChanged`
+* `_suppressTextChanged` guard implemented
+* Per-note font defaults (DIPs stored correctly)
+
+---
+
+## 2️⃣ Sticky Mode 2 (Owned Window Mode)
+
+* Win32 owned window relationship
+* HWND rebind on load
+* Follow timer snapping
+* No hooks, no polling storms
+* Local AOT stable
+
+Sticky Mode is architecturally done.
+
+---
+
+### Fully working:
+
+* Per-note default font
+* Proper DIP ↔ pt boundary handling
+* Bold toggle (WPF-native)
+* Italic toggle
+* Underline toggle (merged correctly)
+* Strikethrough toggle (merged correctly)
+* RoutedCommands (Ctrl+B / Ctrl+I / Ctrl+U)
+* Clean `CanExecute`
+* Accurate submenu checkmarks
+* No decoration overwriting
+* No size drift
+* No unit ping-pong
+* Formatting system is now stable.
+* A real editor core
+* Correct unit boundaries
+* Clean formatting primitives
+* Persistent per-note defaults
+* Safe autosave model
+
+---
+REHASH:
+
+### Core Window System
+
+* ✅ NoteModel + persistence
+* ✅ Autosave batching
+* ✅ Sticky Mode 2 (owned window)
+* ✅ Rebind on load
+* ⬜ Sticky Mode visual clarity polish
+
+### Rich Text System
+
+* ✅ Bold / Italic
+* ✅ Underline / Strikethrough (merged)
+* ✅ RoutedCommands
+* ✅ Accurate checkmarks
+* ✅ Per-note font defaults (DIPs correct)
+* ⬜ Replace WinForms FontDialog with WPF dialog
+* ⬜ Add text color (foreground)
+
+### Persistence
+
+* ⬜ Confirm 100% RTF-only storage
+* ⬜ Backward compatibility test
+* ⬜ Corruption fallback behavior
+
+### UX Polish
+
+* ⬜ Disable formatting when read-only
+* ⬜ Status feedback (optional)
+
+**v4.0 definition of done:**
+Stable editor + sticky behavior + reliable save/load.
+
+
+
+# 🗺 OVERALL ROADMAP — WHAT’S LEFT
+
+Below is structured by subsystem.
+
+---
+
+## 🟡 PHASE 1 — Finish Text System Properly (Medium Priority)
+### 1. Master “Font Settings…” WPF Window
+Currently still using WinForms FontDialog.
+
+Still todo:
+* Font family dropdown
+* Size dropdown
+* Bold/Italic/Underline checkboxes
+* Live preview
+* Apply-to-selection vs set-as-default toggle
+* No System.Drawing dependency
+
+This replaces FontDialog entirely.
+
+---
+
+### 2. Text Color Support
+
+Note background colors are done.
+
+Still need:
+* Foreground color (per selection)
+* Color menu / picker
+* Persisting text color in RTF
+
+---
+
+### 3. Paragraph Formatting
+
+Still need:
+* Left / Center / Right align
+* Bullet lists
+* Indentation
+* Line spacing
+
+---
+
+## 🟡 PHASE 2 — Note System Completeness
+
+### 4. RTF Storage Finalization
+
+Ensure:
+* Always stored as RTF
+* No plaintext fallback edge bugs
+* Migration path from older notes
+
+---
+
+### 5. Undo / Redo Strategy
+
+WPF has internal undo.
+
+As needed:
+* Save-state batching
+* Prevent autosave on every single undo step
+* Custom undo grouping
+
+---
+
+## 🟡 PHASE 3 — System Features
+
+### 6. Multi-Monitor Awareness
+
+You run 4 screens.
+
+Needs:
+* Remember monitor per note
+* Snap restore logic
+* Screen change detection
+
+### 7. Note Manager Window - Command Center
+
+See re_stickit-gui-res.pdf page 2 for rough layout
+* Contain all available information about each open note in its own child window within
+
+### 8. Note Properties finish
+
+See re_stickit-gui-res.pdf page 1 for rough layout
+* Finish the note properties popup dialog 
+* similar to preliminary design in pdf
+
+---
+
+## 🟡 PHASE 5 — Advanced (Future v4.x)
+
+* Checklists
+* Pin-to-desktop-without-owner mode
+* Note layering (z-order management)
+* Global hotkey to create note
+
+
+
+
+
+
