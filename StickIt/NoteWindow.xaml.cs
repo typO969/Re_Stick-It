@@ -137,6 +137,14 @@ namespace StickIt
          _stickyCoalesceTimer.Start();
       }
 
+      private bool CanFormat()
+      {
+         return IsLoaded
+                && txtNoteContent != null
+                && txtNoteContent.IsEnabled
+                && txtNoteContent.IsVisible
+                && !txtNoteContent.IsReadOnly;
+      }
 
 
       public int GetStuckMode() => _noteStuckMode;        // see below
@@ -176,9 +184,18 @@ namespace StickIt
 
          txtNoteContent.SelectionChanged += txtNoteContent_SelectionChanged;
 
-         CommandBindings.Add(new CommandBinding(CmdBold, (_, __) => ToggleBold(), (_, e) => e.CanExecute = true));
-         CommandBindings.Add(new CommandBinding(CmdItalic, (_, __) => ToggleItalic(), (_, e) => e.CanExecute = true));
-         CommandBindings.Add(new CommandBinding(CmdUnderline, (_, __) => ToggleUnderline(), (_, e) => e.CanExecute = true));
+         CommandBindings.Add(new CommandBinding(CmdBold,
+   (_, __) => ToggleBold(),
+   (_, e) => e.CanExecute = CanFormat()));
+
+         CommandBindings.Add(new CommandBinding(CmdItalic,
+            (_, __) => ToggleItalic(),
+            (_, e) => e.CanExecute = CanFormat()));
+
+         CommandBindings.Add(new CommandBinding(CmdUnderline,
+            (_, __) => ToggleUnderline(),
+            (_, e) => e.CanExecute = CanFormat()));
+
 
 
 
