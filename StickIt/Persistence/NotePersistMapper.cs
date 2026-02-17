@@ -37,12 +37,7 @@ namespace StickIt.Persistence
 				DateTime modifiedUtc)
 		{
 
-			var stickyPersist = (stuckModeFinal == 2)
-			? w.GetStickyTargetPersist()
-			: null;
-
-
-			return new NotePersist
+			var persisted = new NotePersist
 			{
 				Id = w.NoteId,
 
@@ -54,6 +49,7 @@ namespace StickIt.Persistence
 				Title = w.GetTitle(),
 
 				Rtf = w.GetRtf(),
+				RtfSchemaVersion = 1,
 				Text = w.GetText(),
 
 				ColorKey = w.GetColorKey().ToString(),
@@ -70,6 +66,9 @@ namespace StickIt.Persistence
 				CreatedUtc = w.GetCreatedUtc(),
 				ModifiedUtc = modifiedUtc
 			};
+
+			MonitorAffinityService.CaptureForWindow(persisted, w);
+			return persisted;
 		}
 	}
 }

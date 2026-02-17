@@ -157,6 +157,7 @@ namespace StickIt
       }
 
       public event EventHandler? NoteTextChanged;
+      public event EventHandler? NoteUndoRedoRequested;
 
       public NoteWindow() : this(new NoteModel())
       {
@@ -201,6 +202,10 @@ namespace StickIt
 
          txtNoteContent.PreviewKeyDown += (s, e) =>
          {
+            var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
+            if (ctrl && (e.Key == Key.Z || e.Key == Key.Y))
+               NoteUndoRedoRequested?.Invoke(this, EventArgs.Empty);
+
             if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)
                      && e.Key == Key.X)
             {

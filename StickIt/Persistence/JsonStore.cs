@@ -3,8 +3,6 @@ using System.IO;
 using System.Text;
 using System.Text.Json;
 
-using StickIt.Persistence;
-
 namespace StickIt.Persistence
 {
 	public static class JsonStore
@@ -14,7 +12,6 @@ namespace StickIt.Persistence
 			WriteIndented = true
 		};
 		private static string? _lastSavedSnapshot;
-
 
 		public static string GetStateFilePath()
 		{
@@ -27,64 +24,61 @@ namespace StickIt.Persistence
 		public static StickItState LoadOrDefault()
 		{
 			var path = GetStateFilePath();
+			var bakPath = path + ".bak";
 
 			if (!File.Exists(path))
 			{
 				var fresh = StateMigrator.MigrateToCurrent(new StickItState());
 				Save(fresh);
-
 				_lastSavedSnapshot = Snapshot(fresh);
-
 				return fresh;
 			}
-
 
 			try
 			{
-				var json = File.ReadAllText(path, Encoding.UTF8);
-
-				var loaded = JsonSerializer.Deserialize<StickItState>(json, Options) ?? new StickItState();
+				var loaded = LoadStateFromPath(path);
 				var migrated = StateMigrator.MigrateToCurrent(loaded);
 				SaveIfChanged(loaded, migrated);
-
-				// Initialize snapshot so first autosave doesn’t re-write
 				_lastSavedSnapshot = Snapshot(migrated);
-
 				return migrated;
-
 			}
 			catch
 			{
-				// If file is corrupted, don't crash the app.
+				if (File.Exists(bakPath))
+				{
+					try
+					{
+						var backupLoaded = LoadStateFromPath(bakPath);
+						var backupMigrated = StateMigrator.MigrateToCurrent(backupLoaded);
+						Save(backupMigrated);
+						_lastSavedSnapshot = Snapshot(backupMigrated);
+						return backupMigrated;
+					}
+					catch
+					{
+						// Fall through to fresh state.
+					}
+				}
+
 				var fresh = StateMigrator.MigrateToCurrent(new StickItState());
 				Save(fresh);
-
 				_lastSavedSnapshot = Snapshot(fresh);
-
 				return fresh;
 			}
-
 		}
-
 
 		private static bool SaveIfChanged(StickItState before, StickItState after)
 		{
-			// Serialize both with same options to compare stable JSON output.
 			var a = JsonSerializer.Serialize(before, Options);
 			var b = JsonSerializer.Serialize(after, Options);
-
 			if (a == b) return false;
-
 			Save(after);
 			return true;
 		}
 
-
 		public static void Save(StickItState state)
 		{
 			var snapshot = Snapshot(state);
-
-			// Skip write if nothing changed
 			if (_lastSavedSnapshot == snapshot)
 				return;
 
@@ -115,14 +109,15 @@ namespace StickIt.Persistence
 			_lastSavedSnapshot = snapshot;
 		}
 
-
 		private static string Snapshot(StickItState state)
 		{
-			// Stable JSON snapshot for comparison (same options every time)
 			return JsonSerializer.Serialize(state, Options);
 		}
 
-
+		private static StickItState LoadStateFromPath(string path)
+		{
+			var json = File.ReadAllText(path, Encoding.UTF8);
+			return JsonSerializer.Deserialize<StickItState>(json, Options) ?? new StickItState();
+		}
 	}
-
 }

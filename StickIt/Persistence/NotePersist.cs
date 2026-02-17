@@ -18,6 +18,7 @@ namespace StickIt.Persistence
 		public double Height { get; set; }
 
 		public string? Rtf { get; set; } = null;
+		public int RtfSchemaVersion { get; set; } = 1;
 
 		// Content + appearance
 		public string Title { get; set; } = "Untitled";
@@ -38,6 +39,13 @@ namespace StickIt.Persistence
 		public string? StickyTarget { get; set; } = null;
 
 		public bool IsMinimized { get; set; } = false; // already present; keep one canonical field
+
+		// Phase-3 readiness: monitor affinity metadata for smarter multi-monitor restore.
+		public string? MonitorDeviceName { get; set; } = null;
+		public double? MonitorWorkAreaLeft { get; set; } = null;
+		public double? MonitorWorkAreaTop { get; set; } = null;
+		public double? MonitorWorkAreaWidth { get; set; } = null;
+		public double? MonitorWorkAreaHeight { get; set; } = null;
 
 
 		// 0 = not stuck, 1 = always-on-top, 2 = stuck-to-program (future)
