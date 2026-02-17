@@ -162,6 +162,17 @@ Needs:
 * Snap restore logic
 * Screen change detection
 
+### 7. Note Manager Window - Command Center
+
+See re_stickit-gui-res.pdf page 2 for rough layout
+* Contain all available information about each open note in its own child window within
+
+### 8. Note Properties finish
+
+See re_stickit-gui-res.pdf page 1 for rough layout
+* Finish the note properties popup dialog 
+* similar to preliminary design in pdf
+
 ---
 
 ## 🟡 PHASE 5 — Advanced (Future v4.x)
@@ -170,6 +181,7 @@ Needs:
 * Pin-to-desktop-without-owner mode
 * Note layering (z-order management)
 * Global hotkey to create note
+
 
 
 
