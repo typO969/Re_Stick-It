@@ -7,7 +7,7 @@ namespace StickIt.Persistence
 	public static class StateMigrator
 	{
 		// Increment this only when you introduce a breaking or meaningfully new schema change.
-		public const int CurrentVersion = 5;
+		public const int CurrentVersion = 6;
 
 		public static StickItState MigrateToCurrent(StickItState state)
 		{
@@ -45,6 +45,13 @@ namespace StickIt.Persistence
 					n.Title = "Untitled";
 				if (n.Text == null)
 					n.Text = "";
+
+				// Canonical content: always persist as RTF.
+				if (string.IsNullOrWhiteSpace(n.Rtf))
+					n.Rtf = RtfCodec.FromPlainText(n.Text, n.FontSize);
+
+				if (n.RtfSchemaVersion <= 0)
+					n.RtfSchemaVersion = 1;
 
 				// ColorKey
 				if (string.IsNullOrWhiteSpace(n.ColorKey) ||

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Microsoft.Win32;
 
 using StickIt.Persistence;
 using StickIt.Services;
@@ -33,7 +34,21 @@ namespace StickIt
 
 
 
-      // Debounce saving so we don’t write on every keystroke/mouse move
+		private DateTime? _pendingSaveDueUtc;
+				if (_pendingSaveDueUtc.HasValue)
+				{
+					var remaining = _pendingSaveDueUtc.Value - DateTime.UtcNow;
+					if (remaining > TimeSpan.FromMilliseconds(10))
+					{
+						_saveTimer.Interval = remaining;
+						return;
+					}
+				}
+
+				_pendingSaveDueUtc = null;
+			SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+
+      // Debounce saving so we donâ€™t write on every keystroke/mouse move
       private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
 
 		protected override void OnStartup(StartupEventArgs e)
@@ -365,13 +380,16 @@ namespace StickIt
 		}
 
 
-		public void QueueSaveFromWindow() => QueueSave();
+		public void QueueSaveFromWindow() => QueueSave(350);
+
+		public void QueueTextSaveFromWindow() => QueueSave(700);
+		public void QueueUndoRedoSaveFromWindow() => QueueSave(1300);
 
 		public void RestoreHiddenNotes()
 		{
 			foreach (var w in _windows.Where(w => w.IsLoaded))
 				w.SetIsMinimized(false);
-			QueueSave();
+			QueueSave(300);
 		}
 
 
@@ -408,10 +426,9 @@ namespace StickIt
 			ClampToVirtualScreen(w);
 
 			// Content (prefer RTF)
-			if (!string.IsNullOrWhiteSpace(note.Rtf))
-				w.SetRtf(note.Rtf);
-			else
-				w.SetText(note.Text);
+			w.SetRtf(note.Rtf ?? RtfCodec.FromPlainText(note.Text, note.FontSize));
+
+			TryRestoreToSavedMonitor(note, w);
 
 			// Sticky + minimized
 			w.SetStuckMode(note.StuckMode);
@@ -423,23 +440,24 @@ namespace StickIt
 			};
 
 			// Autosave triggers
-			w.LocationChanged += (_, __) => QueueSave();
-			w.StateChanged += (_, __) => QueueSave();
-			w.NoteTextChanged += (_, __) => QueueSave();
+			w.LocationChanged += (_, __) => QueueSave(300);
+			w.StateChanged += (_, __) => QueueSave(300);
+			w.NoteTextChanged += (_, __) => QueueSave(700);
+			w.NoteUndoRedoRequested += (_, __) => QueueSave(1300);
 			w.Closed += (_, __) =>
 			{
 				if (_isShuttingDown)
 					return; // shutdown path: don't touch _windows (and don't trigger saves)
 
 				_windows.Remove(w);
-				QueueSave();
+				QueueSave(300);
 
 				// Leave app running when last note is deleted.
 				if (_windows.Count == 0)
 				{
 					NotifyStillRunningIfLastNoteClosed();
 
-					// Optional: keep user from ever having “zero notes”
+					// Optional: keep user from ever having â€œzero notesâ€
 					// CreateNewNoteNear(null);
 				}
 
@@ -486,10 +504,53 @@ namespace StickIt
 
 
 
-		private void QueueSave()
+		private void QueueSave(int delayMs)
 		{
+			delayMs = Math.Max(50, delayMs);
+			var due = DateTime.UtcNow.AddMilliseconds(delayMs);
+			if (!_pendingSaveDueUtc.HasValue || due > _pendingSaveDueUtc.Value)
+				_pendingSaveDueUtc = due;
+
+			var remaining = (_pendingSaveDueUtc.Value - DateTime.UtcNow);
+			if (remaining < TimeSpan.FromMilliseconds(10))
+				remaining = TimeSpan.FromMilliseconds(10);
+
+			_saveTimer.Interval = remaining;
 			_saveTimer.Stop();
 			_saveTimer.Start();
+		}
+
+		private static void TryRestoreToSavedMonitor(NotePersist note, NoteWindow w)
+		{
+			var screen = MonitorAffinityService.TryGetByDeviceName(note.MonitorDeviceName);
+			if (screen == null) return;
+
+			if (note.MonitorWorkAreaWidth is null || note.MonitorWorkAreaHeight is null ||
+				note.MonitorWorkAreaLeft is null || note.MonitorWorkAreaTop is null)
+				return;
+
+			double oldW = Math.Max(1.0, note.MonitorWorkAreaWidth.Value);
+			double oldH = Math.Max(1.0, note.MonitorWorkAreaHeight.Value);
+			double rx = (note.Left - note.MonitorWorkAreaLeft.Value) / oldW;
+			double ry = (note.Top - note.MonitorWorkAreaTop.Value) / oldH;
+
+			rx = Math.Max(0.0, Math.Min(1.0, rx));
+			ry = Math.Max(0.0, Math.Min(1.0, ry));
+
+			var wa = screen.WorkingArea;
+			w.Left = wa.Left + (rx * Math.Max(1, wa.Width - w.Width));
+			w.Top = wa.Top + (ry * Math.Max(1, wa.Height - w.Height));
+		}
+
+		private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+		{
+			Dispatcher.BeginInvoke(() =>
+			{
+				foreach (var w in _windows.Where(x => x.IsLoaded && x.WindowState != WindowState.Minimized))
+					ClampToVirtualScreen(w);
+
+				QueueSave(400);
+			});
 		}
 
 		private void PersistAllWindows()
