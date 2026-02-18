@@ -186,5 +186,4 @@ See re_stickit-gui-res.pdf page 1 for rough layout
 
 
 
-
-
+		
