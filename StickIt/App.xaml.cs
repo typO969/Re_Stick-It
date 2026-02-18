@@ -23,6 +23,7 @@ namespace StickIt
 		private TrayIconService? _tray;
 		private DateTime _lastTrayNoticeUtc = DateTime.MinValue;
 		private bool _shownStillRunningNoticeThisSession;
+		private NoteManagerWindow? _noteManagerWindow;
 
 		private System.Threading.Mutex? _singleInstanceMutex;
 		private const int MaxNotesToAutoOpen = 25;
@@ -35,18 +36,6 @@ namespace StickIt
 
 
 		private DateTime? _pendingSaveDueUtc;
-				if (_pendingSaveDueUtc.HasValue)
-				{
-					var remaining = _pendingSaveDueUtc.Value - DateTime.UtcNow;
-					if (remaining > TimeSpan.FromMilliseconds(10))
-					{
-						_saveTimer.Interval = remaining;
-						return;
-					}
-				}
-
-				_pendingSaveDueUtc = null;
-			SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
       // Debounce saving so we don’t write on every keystroke/mouse move
       private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
@@ -72,6 +61,7 @@ namespace StickIt
 				_saveTimer.Stop();
 				PersistAllWindows();
 			};
+			SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
 			_state = JsonStore.LoadOrDefault();
 
@@ -287,6 +277,17 @@ namespace StickIt
 
 		protected override void OnExit(ExitEventArgs e)
 		{
+			try
+			{
+				_noteManagerWindow?.Close();
+			}
+			catch
+			{
+				// best-effort
+			}
+
+			_noteManagerWindow = null;
+
 			_tray?.Dispose();
 			_tray = null;
 
@@ -392,6 +393,25 @@ namespace StickIt
 			QueueSave(300);
 		}
 
+		public void ShowNoteManager()
+		{
+			if (_noteManagerWindow == null || !_noteManagerWindow.IsLoaded)
+			{
+				_noteManagerWindow = new NoteManagerWindow();
+				_noteManagerWindow.Owner = _windows.FirstOrDefault(w => w.IsLoaded);
+				_noteManagerWindow.Closed += (_, __) => _noteManagerWindow = null;
+				_noteManagerWindow.Show();
+				return;
+			}
+
+			_noteManagerWindow.Activate();
+		}
+
+		public IReadOnlyList<NoteWindow> GetOpenWindowsSnapshot()
+		{
+			return _windows.Where(w => w.IsLoaded).ToList();
+		}
+
 
 
 		private void SpawnWindow(NotePersist note)
@@ -423,12 +443,12 @@ namespace StickIt
 			w.Left = note.Left;
 			w.Top = note.Top;
 
-			ClampToVirtualScreen(w);
+			var restoredToMonitor = TryRestoreToSavedMonitor(note, w);
+			if (!restoredToMonitor)
+				ClampToVirtualScreen(w);
 
 			// Content (prefer RTF)
 			w.SetRtf(note.Rtf ?? RtfCodec.FromPlainText(note.Text, note.FontSize));
-
-			TryRestoreToSavedMonitor(note, w);
 
 			// Sticky + minimized
 			w.SetStuckMode(note.StuckMode);
@@ -483,23 +503,44 @@ namespace StickIt
 			// Clamp right/bottom overflow
 			if (w.Left + w.Width > right - margin)
 				w.Left = right - w.Width - margin;
-
 			if (w.Top + w.Height > bottom - margin)
 				w.Top = bottom - w.Height - margin;
 
 			// Clamp left/top overflow
 			if (w.Left < left + margin)
 				w.Left = left + margin;
-
 			if (w.Top < top + margin)
 				w.Top = top + margin;
 
 			// If window is larger than the virtual screen, at least pin it to the margin.
 			if (w.Width > width - (margin * 2))
 				w.Left = left + margin;
-
 			if (w.Height > height - (margin * 2))
 				w.Top = top + margin;
+		}
+
+		private static void ClampToWorkingArea(NoteWindow w, System.Windows.Forms.Screen screen)
+		{
+			var wa = screen.WorkingArea;
+			const double margin = 20;
+
+			double right = wa.Left + wa.Width;
+			double bottom = wa.Top + wa.Height;
+
+			if (w.Left + w.Width > right - margin)
+				w.Left = right - w.Width - margin;
+			if (w.Top + w.Height > bottom - margin)
+				w.Top = bottom - w.Height - margin;
+
+			if (w.Left < wa.Left + margin)
+				w.Left = wa.Left + margin;
+			if (w.Top < wa.Top + margin)
+				w.Top = wa.Top + margin;
+
+			if (w.Width > wa.Width - (margin * 2))
+				w.Left = wa.Left + margin;
+			if (w.Height > wa.Height - (margin * 2))
+				w.Top = wa.Top + margin;
 		}
 
 
@@ -520,14 +561,15 @@ namespace StickIt
 			_saveTimer.Start();
 		}
 
-		private static void TryRestoreToSavedMonitor(NotePersist note, NoteWindow w)
+		private static bool TryRestoreToSavedMonitor(NotePersist note, NoteWindow w)
 		{
-			var screen = MonitorAffinityService.TryGetByDeviceName(note.MonitorDeviceName);
-			if (screen == null) return;
+			var screen = MonitorAffinityService.TryResolveForPersist(note);
+			if (screen == null)
+				return false;
 
 			if (note.MonitorWorkAreaWidth is null || note.MonitorWorkAreaHeight is null ||
 				note.MonitorWorkAreaLeft is null || note.MonitorWorkAreaTop is null)
-				return;
+				return false;
 
 			double oldW = Math.Max(1.0, note.MonitorWorkAreaWidth.Value);
 			double oldH = Math.Max(1.0, note.MonitorWorkAreaHeight.Value);
@@ -540,6 +582,9 @@ namespace StickIt
 			var wa = screen.WorkingArea;
 			w.Left = wa.Left + (rx * Math.Max(1, wa.Width - w.Width));
 			w.Top = wa.Top + (ry * Math.Max(1, wa.Height - w.Height));
+
+			ClampToWorkingArea(w, screen);
+			return true;
 		}
 
 		private void OnDisplaySettingsChanged(object? sender, EventArgs e)
@@ -547,7 +592,10 @@ namespace StickIt
 			Dispatcher.BeginInvoke(() =>
 			{
 				foreach (var w in _windows.Where(x => x.IsLoaded && x.WindowState != WindowState.Minimized))
-					ClampToVirtualScreen(w);
+				{
+					var screen = MonitorAffinityService.GetScreenForWindow(w);
+					ClampToWorkingArea(w, screen);
+				}
 
 				QueueSave(400);
 			});

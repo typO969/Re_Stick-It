@@ -661,6 +661,7 @@ namespace StickIt
 
 
       public DateTime GetCreatedUtc() => _note?.Props.CreatedUtc ?? default;
+      public DateTime GetModifiedUtc() => _note?.Props.ModifiedUtc ?? default;
 
       private void TouchModifiedUtc()
       {
@@ -702,6 +703,12 @@ namespace StickIt
       private void Menu_Debug(object sender, RoutedEventArgs e)
       {
          new DebugColorsWindow(_note!) { Owner = this }.Show();
+      }
+
+      private void Menu_NoteProperties(object sender, RoutedEventArgs e)
+      {
+         var dlg = new NotePropertiesWindow(this) { Owner = this };
+         dlg.ShowDialog();
       }
 
       private void Menu_Delete(object sender, RoutedEventArgs e)
@@ -762,7 +769,10 @@ namespace StickIt
 
       private void Menu_LoadNotes(object sender, RoutedEventArgs e) { }
       private void Menu_Preferences(object sender, RoutedEventArgs e) { }
-      private void Menu_NoteManager(object sender, RoutedEventArgs e) { }
+      private void Menu_NoteManager(object sender, RoutedEventArgs e)
+      {
+         AppInstance.ShowNoteManager();
+      }
 
       private System.Drawing.Font GetSelectionFontInfo()
       {
@@ -1316,58 +1326,7 @@ namespace StickIt
 
 
 
-      // !!!!  -------------  NOTE PROPERTIES TEMP START ---------- !!!!!!!!
-      private void NoteMenu_Opened(object sender, RoutedEventArgs e)
-      {
-         // ID
-         if (_note == null)
-            return;
-         miProp_Id.Header = $"Note ID: {_note.Props.Id}";
-
-         // Contains: chars, words, lines
-         var text = GetText();
-         var chars = text.Length;
-         var words = CountWords(text);
-         var lines = CountLines(text);
-         miProp_Contains.Header = $"Contains: {chars} chars, {words} words, {lines} lines";
-
-         // Timestamps (UTC; you can format later)
-         miProp_Created.Header = $"Created: {_note.Props.CreatedUtc:u}";
-         miProp_Modified.Header = $"Modified: {_note.Props.ModifiedUtc:u}";
-
-         // Position
-         miProp_Position.Header = $"Position: X={Left:0}, Y={Top:0}";
-
-         // Color
-         miProp_Color.Header = $"Color: {_note.ColorKey}";
-
-         // Sticky
-         miProp_Sticky.Header = $"Sticky: {StickyLabel(GetStuckMode())}";
-
-         // Font
-         miProp_Font.Header = $"Font: {_note.FontFamily}, {_note.FontSize:0.#} pt";
-      }
-
-      private static int CountWords(string s)
-      {
-         if (string.IsNullOrWhiteSpace(s)) return 0;
-         return s.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
-      }
-
-      private static int CountLines(string s)
-      {
-         if (string.IsNullOrEmpty(s)) return 0;
-         return s.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None).Length;
-      }
-
-      private static string StickyLabel(int mode) => mode switch
-      {
-         0 => "Not stuck",
-         1 => "Always on top",
-         2 => "Stick to application (future)",
-         _ => $"Unknown ({mode})"
-      };
-      // !!!!!!!!!!! ----------- NOTE PROPERTIES TEMP END ---------- !!!!!!!!!!!
+      
 
 
 

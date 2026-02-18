@@ -140,7 +140,7 @@
 
 
       <Border.ContextMenu>
-         <ContextMenu Opened="NoteMenu_Opened">
+         <ContextMenu>
 
             <!--  Lifecycle  -->
             <MenuItem
@@ -402,42 +402,9 @@
             <Separator />
 
             <!--  Properties  -->
-            <MenuItem Header="Note properties">
-               <!--  These are populated on open  -->
-               <MenuItem
-                  x:Name="miProp_Id"
-                  Header="Note ID:"
-                  IsEnabled="False" />
-               <MenuItem
-                  x:Name="miProp_Contains"
-                  Header="Contains:"
-                  IsEnabled="False" />
-               <MenuItem
-                  x:Name="miProp_Created"
-                  Header="Created:"
-                  IsEnabled="False" />
-               <MenuItem
-                  x:Name="miProp_Modified"
-                  Header="Modified:"
-                  IsEnabled="False" />
-               <Separator />
-               <MenuItem
-                  x:Name="miProp_Position"
-                  Header="Position:"
-                  IsEnabled="False" />
-               <MenuItem
-                  x:Name="miProp_Color"
-                  Header="Color:"
-                  IsEnabled="False" />
-               <MenuItem
-                  x:Name="miProp_Sticky"
-                  Header="Sticky:"
-                  IsEnabled="False" />
-               <MenuItem
-                  x:Name="miProp_Font"
-                  Header="Font:"
-                  IsEnabled="False" />
-            </MenuItem>
+            <MenuItem
+               Click="Menu_NoteProperties"
+               Header="Note properties..." />
 
             <Separator />
 
@@ -475,8 +442,7 @@
                IsEnabled="False" />
             <MenuItem
                Click="Menu_NoteManager"
-               Header="Note manager..."
-               IsEnabled="False" />
+               Header="Note manager..." />
 
             <Separator />
 
