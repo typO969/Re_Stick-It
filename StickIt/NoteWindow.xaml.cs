@@ -45,6 +45,10 @@ namespace StickIt
       private static double DipToPoints(double dip) => dip * 72.0 / 96.0;
 
       private bool _suppressTextChanged;
+      private bool _dropShadowEnabled = true;
+      private bool _snapToGridEnabled;
+      private bool _snapGridAdjusting;
+      private const double SnapGridSize = 20.0;
 
 
 
@@ -184,6 +188,8 @@ namespace StickIt
          _followTimer.Start();
 
          txtNoteContent.SelectionChanged += txtNoteContent_SelectionChanged;
+         LocationChanged += NoteWindow_LocationChanged;
+         Closing += NoteWindow_Closing;
 
          CommandBindings.Add(new CommandBinding(CmdBold,
    (_, __) => ToggleBold(),
@@ -768,7 +774,10 @@ namespace StickIt
 
 
       private void Menu_LoadNotes(object sender, RoutedEventArgs e) { }
-      private void Menu_Preferences(object sender, RoutedEventArgs e) { }
+      private void Menu_Preferences(object sender, RoutedEventArgs e)
+      {
+         AppInstance.ShowPreferences();
+      }
       private void Menu_NoteManager(object sender, RoutedEventArgs e)
       {
          AppInstance.ShowNoteManager();
@@ -1245,13 +1254,13 @@ namespace StickIt
          {
             case 1: // AOT
                NoteChrome.BorderThickness = new Thickness(6);
-               NoteChrome.Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 3, Opacity = 0.45 };
+               NoteChrome.Effect = _dropShadowEnabled ? new DropShadowEffect { BlurRadius = 24, ShadowDepth = 3, Opacity = 0.45 } : null;
                if (StickyAccent != null) StickyAccent.BorderBrush = System.Windows.Media.Brushes.Transparent;
                break;
 
             case 2: // Stuck
                NoteChrome.BorderThickness = new Thickness(12);
-               NoteChrome.Effect = new DropShadowEffect { BlurRadius = 34, ShadowDepth = 0, Opacity = 0.45 };
+               NoteChrome.Effect = _dropShadowEnabled ? new DropShadowEffect { BlurRadius = 34, ShadowDepth = 0, Opacity = 0.45 } : null;
                if (StickyAccent != null)
                {
                   StickyAccent.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(140, 255, 200, 80));
@@ -1261,9 +1270,76 @@ namespace StickIt
 
             default: // Normal
                NoteChrome.BorderThickness = new Thickness(2);
-               NoteChrome.Effect = new DropShadowEffect { BlurRadius = 14, ShadowDepth = 2, Opacity = 0.25 };
+               NoteChrome.Effect = _dropShadowEnabled ? new DropShadowEffect { BlurRadius = 14, ShadowDepth = 2, Opacity = 0.25 } : null;
                if (StickyAccent != null) StickyAccent.BorderBrush = System.Windows.Media.Brushes.Transparent;
                break;
+         }
+      }
+
+      public void ApplyPreferences(StickIt.Persistence.AppPreferences prefs)
+      {
+         _dropShadowEnabled = prefs.EnableDropShadow;
+         _snapToGridEnabled = prefs.SnapNotesToGrid;
+
+         if (txtNoteTitle != null)
+         {
+            try
+            {
+               txtNoteTitle.FontFamily = new System.Windows.Media.FontFamily(prefs.TitleFontFamily);
+            }
+            catch
+            {
+               txtNoteTitle.FontFamily = new System.Windows.Media.FontFamily("Segoe UI");
+            }
+
+            txtNoteTitle.FontSize = prefs.TitleFontSize;
+         }
+
+         UpdateStickyVisuals();
+      }
+
+      private void NoteWindow_Closing(object? sender, CancelEventArgs e)
+      {
+         var app = AppInstance;
+         if (app.IsShuttingDown)
+            return;
+
+         if (!app.Preferences.ConfirmOnDelete)
+            return;
+
+         var result = System.Windows.MessageBox.Show(
+            "Delete this note?",
+            "Confirm delete",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+         if (result != MessageBoxResult.Yes)
+            e.Cancel = true;
+      }
+
+      private void NoteWindow_LocationChanged(object? sender, EventArgs e)
+      {
+         if (!_snapToGridEnabled || _snapGridAdjusting)
+            return;
+
+         if (_noteStuckMode == 2)
+            return;
+
+         double snappedLeft = Math.Round(Left / SnapGridSize) * SnapGridSize;
+         double snappedTop = Math.Round(Top / SnapGridSize) * SnapGridSize;
+
+         if (Math.Abs(snappedLeft - Left) < 0.5 && Math.Abs(snappedTop - Top) < 0.5)
+            return;
+
+         _snapGridAdjusting = true;
+         try
+         {
+            Left = snappedLeft;
+            Top = snappedTop;
+         }
+         finally
+         {
+            _snapGridAdjusting = false;
          }
       }
 

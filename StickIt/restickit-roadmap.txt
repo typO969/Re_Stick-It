@@ -177,7 +177,7 @@ See re_stickit-gui-res.pdf page 1 for rough layout
 
 ## 🟡 PHASE 4 — App Prefs Dialog and Polish
 
-* Create preferences dialog based on the ideas from "stickit_prefsIdeas.pdf"
+* Create preferences dialog based on the ideas from "stickit_prefsIdeas.pdf" (if that wont open try: "prefs2ThinkAbout__gather-red.png", which contains the same thing but as 4 images that need to be scanned (OCR) for text)
 * Implement as many of the proposed settings as possible
 * optimize codebase for maintainability and future features
 

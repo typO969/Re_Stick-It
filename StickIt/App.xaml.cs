@@ -7,6 +7,7 @@ using Microsoft.Win32;
 
 using StickIt.Persistence;
 using StickIt.Services;
+using StickIt.Sticky.Services;
 
 namespace StickIt
 {
@@ -24,6 +25,7 @@ namespace StickIt
 		private DateTime _lastTrayNoticeUtc = DateTime.MinValue;
 		private bool _shownStillRunningNoticeThisSession;
 		private NoteManagerWindow? _noteManagerWindow;
+		private PreferencesWindow? _preferencesWindow;
 
 		private System.Threading.Mutex? _singleInstanceMutex;
 		private const int MaxNotesToAutoOpen = 25;
@@ -39,6 +41,9 @@ namespace StickIt
 
       // Debounce saving so we don’t write on every keystroke/mouse move
       private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+
+		public AppPreferences Preferences => _state.Preferences;
+		public bool IsShuttingDown => _isShuttingDown;
 
 		protected override void OnStartup(StartupEventArgs e)
 		{
@@ -64,6 +69,7 @@ namespace StickIt
 			SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
 			_state = JsonStore.LoadOrDefault();
+			ApplyPreferences(_state.Preferences, persist: false);
 
 			if (_state.Notes.Count == 0)
 			{
@@ -109,30 +115,7 @@ namespace StickIt
 			//foreach (var note in _state.Notes)
 			//	SpawnWindow(note);
 
-			var iconPath = System.IO.Path.Combine(
-				AppDomain.CurrentDomain.BaseDirectory,
-				"Properties",
-				"Icons",
-				"stickIt_Main.ico");
-
-			var icon = new System.Drawing.Icon(iconPath);
-
-         _tray = new StickIt.Services.TrayIconService(
-             icon,
-
-             // New note
-             () => Dispatcher.BeginInvoke(new Action(() => CreateNewNoteNear(null))),
-             // Minimize all
-             () => Dispatcher.BeginInvoke(new Action(MinimizeAllNotes)),
-             // Restore all
-             () => Dispatcher.BeginInvoke(new Action(RestoreAllNotes)),
-             // Save all
-             () => Dispatcher.BeginInvoke(new Action(SaveAllNotesNow)),
-             // Show notes
-             () => Dispatcher.BeginInvoke(new Action(ShowAllNotes)),
-             // Exit
-             () => Dispatcher.BeginInvoke(new Action(ShutdownRequested))
-         );
+			UpdateTrayIcon();
 
 
 
@@ -143,6 +126,8 @@ namespace StickIt
 				_saveTimer.Stop();
 				_tray?.Dispose();
 				_tray = null;
+				_preferencesWindow?.Close();
+				_preferencesWindow = null;
 				FlushPendingUiEdits();
 				PersistAllWindowsOnShutdown();
 			};
@@ -287,6 +272,7 @@ namespace StickIt
 			}
 
 			_noteManagerWindow = null;
+			_preferencesWindow = null;
 
 			_tray?.Dispose();
 			_tray = null;
@@ -393,6 +379,87 @@ namespace StickIt
 			QueueSave(300);
 		}
 
+		public void ShowPreferences()
+		{
+			if (_preferencesWindow == null || !_preferencesWindow.IsLoaded)
+			{
+				_preferencesWindow = new PreferencesWindow(Preferences);
+				_preferencesWindow.Owner = _windows.FirstOrDefault(w => w.IsLoaded);
+				_preferencesWindow.Closed += (_, __) => _preferencesWindow = null;
+				_preferencesWindow.Show();
+				return;
+			}
+
+			_preferencesWindow.Activate();
+		}
+
+		public void ApplyPreferences(AppPreferences preferences, bool persist)
+		{
+			_state.Preferences = preferences ?? new AppPreferences();
+			AppThemeService.ApplyTheme(_state.Preferences.DarkMode);
+			UpdateTrayIcon();
+			UpdateRunOnStartup();
+			ApplyPreferencesToWindows();
+
+			if (persist)
+				JsonStore.Save(_state);
+		}
+
+		private void ApplyPreferencesToWindows()
+		{
+			foreach (var w in _windows.Where(w => w.IsLoaded))
+			{
+				w.ShowInTaskbar = Preferences.ShowTaskbarIcon;
+				w.ApplyPreferences(Preferences);
+				ClampToPreferredArea(w);
+			}
+		}
+
+		private void UpdateRunOnStartup()
+		{
+			try
+			{
+				var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+				if (!string.IsNullOrWhiteSpace(exePath))
+					StartupRegistryService.SetRunOnStartup(Preferences.RunOnStartup, exePath);
+			}
+			catch
+			{
+				// best-effort
+			}
+		}
+
+		private void UpdateTrayIcon()
+		{
+			if (!Preferences.ShowTrayIcon)
+			{
+				_tray?.Dispose();
+				_tray = null;
+				return;
+			}
+
+			if (_tray != null)
+				return;
+
+			var iconPath = System.IO.Path.Combine(
+				AppDomain.CurrentDomain.BaseDirectory,
+				"Properties",
+				"Icons",
+				"stickIt_Main.ico");
+
+			var icon = new System.Drawing.Icon(iconPath);
+
+			_tray = new StickIt.Services.TrayIconService(
+				icon,
+				() => Dispatcher.BeginInvoke(new Action(() => CreateNewNoteNear(null))),
+				() => Dispatcher.BeginInvoke(new Action(MinimizeAllNotes)),
+				() => Dispatcher.BeginInvoke(new Action(RestoreAllNotes)),
+				() => Dispatcher.BeginInvoke(new Action(SaveAllNotesNow)),
+				() => Dispatcher.BeginInvoke(new Action(ShowAllNotes)),
+				() => Dispatcher.BeginInvoke(new Action(ShutdownRequested))
+			);
+		}
+
 		public void ShowNoteManager()
 		{
 			if (_noteManagerWindow == null || !_noteManagerWindow.IsLoaded)
@@ -436,6 +503,10 @@ namespace StickIt
 
 			// Create window
 			var w = new NoteWindow(model);
+			w.ShowInTaskbar = Preferences.ShowTaskbarIcon;
+			w.ApplyPreferences(Preferences);
+
+			w.SetStickyTarget(note.StickyTargetPersist);
 
 			// Geometry first
 			w.Width = note.Width <= 0 ? 380 : note.Width;
@@ -446,6 +517,7 @@ namespace StickIt
 			var restoredToMonitor = TryRestoreToSavedMonitor(note, w);
 			if (!restoredToMonitor)
 				ClampToVirtualScreen(w);
+			ClampToPreferredArea(w);
 
 			// Content (prefer RTF)
 			w.SetRtf(note.Rtf ?? RtfCodec.FromPlainText(note.Text, note.FontSize));
@@ -543,6 +615,46 @@ namespace StickIt
 				w.Top = wa.Top + margin;
 		}
 
+		private bool ClampToPreferredArea(NoteWindow w)
+		{
+			if (!Preferences.KeepNotesInsideDesktopArea)
+				return false;
+
+			if (Preferences.DesktopAreaLeft is null || Preferences.DesktopAreaTop is null ||
+				Preferences.DesktopAreaWidth is null || Preferences.DesktopAreaHeight is null)
+				return false;
+
+			double left = Preferences.DesktopAreaLeft.Value;
+			double top = Preferences.DesktopAreaTop.Value;
+			double width = Preferences.DesktopAreaWidth.Value;
+			double height = Preferences.DesktopAreaHeight.Value;
+
+			if (width <= 0 || height <= 0)
+				return false;
+
+			double right = left + width;
+			double bottom = top + height;
+
+			const double margin = 10;
+
+			if (w.Left + w.Width > right - margin)
+				w.Left = right - w.Width - margin;
+			if (w.Top + w.Height > bottom - margin)
+				w.Top = bottom - w.Height - margin;
+
+			if (w.Left < left + margin)
+				w.Left = left + margin;
+			if (w.Top < top + margin)
+				w.Top = top + margin;
+
+			if (w.Width > width - (margin * 2))
+				w.Left = left + margin;
+			if (w.Height > height - (margin * 2))
+				w.Top = top + margin;
+
+			return true;
+		}
+
 
 
 		private void QueueSave(int delayMs)
@@ -593,8 +705,11 @@ namespace StickIt
 			{
 				foreach (var w in _windows.Where(x => x.IsLoaded && x.WindowState != WindowState.Minimized))
 				{
-					var screen = MonitorAffinityService.GetScreenForWindow(w);
-					ClampToWorkingArea(w, screen);
+					if (!ClampToPreferredArea(w))
+					{
+						var screen = MonitorAffinityService.GetScreenForWindow(w);
+						ClampToWorkingArea(w, screen);
+					}
 				}
 
 				QueueSave(400);
@@ -667,11 +782,30 @@ namespace StickIt
             Title = "Untitled",
             Text = "",
             ColorKey = nameof(NoteColors.NoteColor.ThreeMYellow),
-            StuckMode = 0,
+				StuckMode = 0,
             IsMinimized = false,
             CreatedUtc = DateTime.UtcNow,
             ModifiedUtc = DateTime.UtcNow,
+				FontFamily = Preferences.BodyFontFamily,
+				FontSize = Preferences.BodyFontSize,
          };
+
+			if (Preferences.AlwaysStickNewNotesToDesktop)
+			{
+				var desktop = DesktopTargetService.TryGetDesktopTarget();
+				if (desktop != null)
+				{
+					p.StuckMode = 2;
+					p.StickyTargetPersist = new StickyTargetPersist
+					{
+						ProcessId = desktop.ProcessId,
+						ProcessName = desktop.ProcessName,
+						WindowTitle = desktop.WindowTitle,
+						ClassName = desktop.ClassName,
+						CapturedUtc = desktop.CapturedUtc
+					};
+				}
+			}
 
 
          // Add to state so it exists even if we crash before debounce tick

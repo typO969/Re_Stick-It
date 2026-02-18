@@ -5,10 +5,12 @@
    Title="Note properties"
    Width="420"
    Height="420"
+   Background="{DynamicResource AppBackgroundBrush}"
+   Foreground="{DynamicResource AppForegroundBrush}"
    ResizeMode="NoResize"
    ShowInTaskbar="False"
    WindowStartupLocation="CenterOwner">
-   <Grid Margin="12">
+   <Grid Margin="12" Background="{DynamicResource AppBackgroundBrush}">
       <Grid.RowDefinitions>
          <RowDefinition Height="Auto" />
          <RowDefinition Height="*" />

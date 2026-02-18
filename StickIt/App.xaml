@@ -5,6 +5,11 @@
 	ShutdownMode="OnLastWindowClose">
 
 	<Application.Resources>
+		<SolidColorBrush x:Key="AppBackgroundBrush" Color="#FAFAFA" />
+		<SolidColorBrush x:Key="AppForegroundBrush" Color="#1E1E1E" />
+		<SolidColorBrush x:Key="AppPanelBrush" Color="#F0F0F0" />
+		<SolidColorBrush x:Key="AppBorderBrush" Color="#C8C8C8" />
+
 		<DropShadowEffect
 			x:Key="DropShadow"
 			BlurRadius="10"

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -9,7 +9,9 @@
     <Platforms>AnyCPU;x64;x86</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="prefs2ThinkAbout__gather-red.png" />
     <None Remove="Properties\Icons\stickIt_Main.ico" />
+    <None Remove="stickit_prefsIdeas.pdf" />
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="{215d64d2-031c-33c7-96e3-61794cd1ee61}">
@@ -30,4 +32,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+
+
+
+
+
 </Project>

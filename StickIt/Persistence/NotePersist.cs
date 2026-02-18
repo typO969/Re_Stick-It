@@ -60,6 +60,7 @@ namespace StickIt.Persistence
 		public int Version { get; set; } = StateMigrator.CurrentVersion;
 
 		public List<NotePersist> Notes { get; set; } = new();
+		public AppPreferences Preferences { get; set; } = new();
 	}
 
 }

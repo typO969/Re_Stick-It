@@ -438,8 +438,7 @@
             <!--  App-level  -->
             <MenuItem
                Click="Menu_Preferences"
-               Header="Preferences..."
-               IsEnabled="False" />
+               Header="Preferences..." />
             <MenuItem
                Click="Menu_NoteManager"
                Header="Note manager..." />
