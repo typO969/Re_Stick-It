@@ -751,25 +751,12 @@ namespace StickIt
       // Placeholders (disabled now; handler exists in case you enable later)
       private void Menu_FontSettings(object sender, RoutedEventArgs e)
       {
-         var cur = GetSelectionFontInfo(); // this still returns System.Drawing.Font (points)
+         var settings = GetSelectionFontSettings();
+         var dlg = new FontSettingsWindow(settings) { Owner = this };
+         if (dlg.ShowDialog() != true || dlg.Settings == null)
+            return;
 
-         using (var dlg = new System.Windows.Forms.FontDialog())
-         {
-            dlg.ShowColor = false;
-            dlg.ShowEffects = false;
-            dlg.Font = cur;
-
-            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK)
-               return;
-
-            System.Drawing.Font f = dlg.Font;
-
-            ApplyFontToSelectionWpf(
-               f.FontFamily.Name,
-               PointsToDip(f.SizeInPoints),   // convert once here
-               f.Bold,
-               f.Italic);
-         }
+         ApplyFontSettings(dlg.Settings);
       }
 
 
@@ -783,7 +770,7 @@ namespace StickIt
          AppInstance.ShowNoteManager();
       }
 
-      private System.Drawing.Font GetSelectionFontInfo()
+      private FontSettingsData GetSelectionFontSettings()
       {
          var sel = txtNoteContent.Selection;
 
@@ -791,34 +778,72 @@ namespace StickIt
          object fs = sel.GetPropertyValue(TextElement.FontSizeProperty);
          object fw = sel.GetPropertyValue(TextElement.FontWeightProperty);
          object fst = sel.GetPropertyValue(TextElement.FontStyleProperty);
+         object fg = sel.GetPropertyValue(TextElement.ForegroundProperty);
 
-         string family = 
+         string family =
             (ff is System.Windows.Media.FontFamily fam) ? fam.Source :
             (!string.IsNullOrWhiteSpace(_note?.FontFamily) ? _note.FontFamily : "Segoe UI");
 
-         // WPF size is DIPs; may be UnsetValue on mixed selection
          double sizeDip =
             (fs is double d && d > 0) ? d :
-            (_note?.FontSize > 0 ? _note.FontSize : 16.0);
-
-         float sizePt = (float)DipToPoints(sizeDip);
+            (_note?.FontSize > 0 ? _note.FontSize : 14.0);
 
          bool bold = (fw is FontWeight w) && (w == FontWeights.Bold);
-         bool italic =   (fst is System.Windows.FontStyle s) && (s == System.Windows.FontStyles.Italic);
+         bool italic = (fst is System.Windows.FontStyle s) && (s == System.Windows.FontStyles.Italic);
 
-         var style = System.Drawing.FontStyle.Regular;
-         if (bold) style |= System.Drawing.FontStyle.Bold;
-         if (italic) style |= System.Drawing.FontStyle.Italic;
+         var deco = sel.GetPropertyValue(Inline.TextDecorationsProperty);
+         bool underline = HasDecorationLocation(GetDecorationsOrEmpty(deco), TextDecorationLocation.Underline);
 
-         try
+         System.Windows.Media.Color color = System.Windows.Media.Colors.Black;
+         if (fg is SolidColorBrush brush)
+            color = brush.Color;
+         else if (txtNoteContent.Foreground is SolidColorBrush fallback)
+            color = fallback.Color;
+
+         return new FontSettingsData
          {
-            return new System.Drawing.Font(family, sizePt, style);
-         }
-         catch
+            FontFamily = family,
+            FontSize = sizeDip,
+            IsBold = bold,
+            IsItalic = italic,
+            IsUnderline = underline,
+            Color = color,
+            ApplyToSelection = true
+         };
+      }
+
+      private void ApplyFontSettings(FontSettingsData settings)
+      {
+         if (settings == null)
+            return;
+
+         TextRange range;
+
+         if (settings.ApplyToSelection)
          {
-            // absolute fallback if a font name is invalid on this machine
-            return new System.Drawing.Font("Segoe UI", sizePt, style);
+            range = new TextRange(txtNoteContent.Selection.Start, txtNoteContent.Selection.End);
          }
+         else
+         {
+            TextPointer start = txtNoteContent.CaretPosition ?? txtNoteContent.Document.ContentStart;
+            start = start.GetInsertionPosition(LogicalDirection.Forward) ?? txtNoteContent.Document.ContentStart;
+            range = new TextRange(start, start);
+
+            if (_note != null)
+            {
+               _note.FontFamily = settings.FontFamily;
+               _note.FontSize = settings.FontSize;
+            }
+         }
+
+         range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily(settings.FontFamily));
+         range.ApplyPropertyValue(TextElement.FontSizeProperty, settings.FontSize);
+         range.ApplyPropertyValue(TextElement.FontWeightProperty, settings.IsBold ? FontWeights.Bold : FontWeights.Normal);
+         range.ApplyPropertyValue(TextElement.FontStyleProperty, settings.IsItalic ? FontStyles.Italic : FontStyles.Normal);
+         range.ApplyPropertyValue(Inline.TextDecorationsProperty, settings.IsUnderline ? TextDecorations.Underline : null);
+         range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(settings.Color));
+
+         NoteTextChanged?.Invoke(this, EventArgs.Empty);
       }
 
 
