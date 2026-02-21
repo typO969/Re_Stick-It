@@ -37,7 +37,10 @@
                      BorderBrush="{TemplateBinding BorderBrush}"
                      BorderThickness="{TemplateBinding BorderThickness}"
                      CornerRadius="1">
-                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                     <ContentPresenter
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        TextElement.Foreground="{TemplateBinding Foreground}" />
                   </Border>
                   <ControlTemplate.Triggers>
                      <Trigger Property="IsMouseOver" Value="True">
@@ -54,9 +57,19 @@
             </Setter.Value>
          </Setter>
       </Style>
+      <Style x:Key="PinIconButtonStyle" TargetType="Button" BasedOn="{StaticResource NoteIconButton}">
+         <Style.Triggers>
+            <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+               <Setter Property="Foreground" Value="White" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
+               <Setter Property="Foreground" Value="Black" />
+            </DataTrigger>
+         </Style.Triggers>
+      </Style>
       <Style x:Key="NoteChromeStyle" TargetType="Border">
          <!--  Mode 0 defaults  -->
-         <Setter Property="BorderThickness" Value="1" />
+         <Setter Property="BorderThickness" Value="6" />
          <Setter Property="BorderBrush" Value="#55000000" />
          <Setter Property="Effect">
             <Setter.Value>
@@ -71,8 +84,8 @@
 
             <!--  Mode 1: Always on top (thicker + slightly stronger shadow)  -->
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
-               <Setter Property="BorderThickness" Value="2" />
-               <Setter Property="BorderBrush" Value="#99000000" />
+               <Setter Property="BorderThickness" Value="8" />
+               <Setter Property="BorderBrush" Value="White" />
                <Setter Property="Effect">
                   <Setter.Value>
                      <DropShadowEffect
@@ -85,8 +98,8 @@
 
             <!--  Mode 2: Stuck (thicker + “tape/glow” vibe via softer shadow)  -->
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
-               <Setter Property="BorderThickness" Value="3" />
-               <Setter Property="BorderBrush" Value="#CC000000" />
+               <Setter Property="BorderThickness" Value="5" />
+               <Setter Property="BorderBrush" Value="#FF0000" />
                <Setter Property="Effect">
                   <Setter.Value>
                      <!--  shallow “halo” reads like adhesion without looking sci-fi  -->
@@ -103,11 +116,29 @@
 
       <Style x:Key="StickyAccentStyle" TargetType="Border">
          <Setter Property="BorderBrush" Value="Transparent" />
-         <Setter Property="BorderThickness" Value="2" />
+         <Setter Property="BorderThickness" Value="5" />
          <Style.Triggers>
+            <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+               <Setter Property="BorderBrush" Value="#CCFFFFFF" />
+               <Setter Property="BorderThickness" Value="6" />
+            </DataTrigger>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
-               <!--  warm, tape-like accent  -->
-               <Setter Property="BorderBrush" Value="#90FFC850" />
+               <Setter Property="BorderBrush" Value="#FF0000" />
+               <Setter Property="BorderThickness" Value="7" />
+            </DataTrigger>
+         </Style.Triggers>
+      </Style>
+      <Style x:Key="StickyOverlayStyle" TargetType="Border">
+         <Setter Property="BorderBrush" Value="Transparent" />
+         <Setter Property="BorderThickness" Value="5" />
+         <Style.Triggers>
+            <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+               <Setter Property="BorderBrush" Value="#CCFFFFFF" />
+               <Setter Property="BorderThickness" Value="8" />
+            </DataTrigger>
+            <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
+               <Setter Property="BorderBrush" Value="#FF0000" />
+               <Setter Property="BorderThickness" Value="5" />
             </DataTrigger>
          </Style.Triggers>
       </Style>
@@ -129,18 +160,19 @@
 
 
    <!--  - OUTER BORDER BEGINS HERE!!!!  -->
-   <Border
-      x:Name="NoteChrome"
-      Padding="0"
-      Background="{Binding PaperBrush}"
-      BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
-      BorderThickness="1"
-      CornerRadius="1"
-      Style="{StaticResource NoteChromeStyle}">
+   <Grid>
+      <Border
+         x:Name="NoteChrome"
+         Padding="0"
+         Background="{Binding PaperBrush}"
+         BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
+         BorderThickness="1"
+         CornerRadius="1"
+         Style="{StaticResource NoteChromeStyle}">
 
 
-      <Border.ContextMenu>
-         <ContextMenu>
+         <Border.ContextMenu>
+            <ContextMenu>
 
             <!--  Lifecycle  -->
             <MenuItem
@@ -376,9 +408,7 @@
             <Separator />
 
             <!--  Font  -->
-            <MenuItem
-               Click="Menu_FontSettings"
-               Header="Font settings..." />
+            <MenuItem Click="Menu_FontSettings" Header="Font settings..." />
             <MenuItem Header="Font _Properties">
                <MenuItem
                   x:Name="miBold"
@@ -401,9 +431,7 @@
             <Separator />
 
             <!--  Properties  -->
-            <MenuItem
-               Click="Menu_NoteProperties"
-               Header="Note properties..." />
+            <MenuItem Click="Menu_NoteProperties" Header="Note properties..." />
 
             <Separator />
 
@@ -435,12 +463,8 @@
             <Separator />
 
             <!--  App-level  -->
-            <MenuItem
-               Click="Menu_Preferences"
-               Header="Preferences..." />
-            <MenuItem
-               Click="Menu_NoteManager"
-               Header="Note manager..." />
+            <MenuItem Click="Menu_Preferences" Header="Preferences..." />
+            <MenuItem Click="Menu_NoteManager" Header="Note manager..." />
 
             <Separator />
 
@@ -450,18 +474,18 @@
             <Separator />
 
             <MenuItem Click="Menu_Exit" Header="Quit StickIt" />
-         </ContextMenu>
-      </Border.ContextMenu>
-
-      <Grid>
-
-         <Border
-            x:Name="StickyAccent"
-            Margin="3"
-            Style="{StaticResource StickyAccentStyle}" />
-
+            </ContextMenu>
+         </Border.ContextMenu>
 
          <Grid>
+
+            <Border
+               x:Name="StickyAccent"
+               Margin="3"
+               Style="{StaticResource StickyAccentStyle}" />
+
+
+            <Grid>
             <Grid.RowDefinitions>
                <RowDefinition Height="25" />
                <RowDefinition Height="25" />
@@ -532,16 +556,16 @@
                         Margin="0,0,2,0"
                         Click="btnPinCycle_Click"
                         Content="📌"
-                        Style="{StaticResource NoteIconButton}"
+                        Style="{StaticResource PinIconButtonStyle}"
                         ToolTip="Pin">
 
                         <Button.Template>
                            <ControlTemplate TargetType="Button">
 
                               <Border
-                                 Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-                                 BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
-                                 BorderThickness="1"
+                                 Background="{TemplateBinding Background}"
+                                 BorderBrush="{TemplateBinding BorderBrush}"
+                                 BorderThickness="{TemplateBinding BorderThickness}"
                                  CornerRadius="2"
                                  Opacity="0.80">
 
@@ -552,7 +576,10 @@
                                     CornerRadius="1"
                                     Opacity="0.25">
 
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <ContentPresenter
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextElement.Foreground="{TemplateBinding Foreground}" />
                                  </Border>
 
                               </Border>
@@ -641,7 +668,14 @@
                HorizontalScrollBarVisibility="Disabled"
                RenderTransformOrigin="0.5,0.5"
                VerticalScrollBarVisibility="Disabled" />
+            </Grid>
          </Grid>
-      </Grid>
-   </Border>
+      </Border>
+
+      <Border
+         x:Name="StickyOverlay"
+         IsHitTestVisible="False"
+         Margin="-3"
+         Style="{StaticResource StickyOverlayStyle}" />
+   </Grid>
 </Window>

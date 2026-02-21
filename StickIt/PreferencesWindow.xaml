@@ -11,115 +11,160 @@
    Foreground="{DynamicResource AppForegroundBrush}"
    ShowInTaskbar="False"
    WindowStartupLocation="CenterOwner">
-	<Grid Margin="12" Background="{DynamicResource AppBackgroundBrush}">
-		<Grid.RowDefinitions>
-			<RowDefinition Height="*" />
-			<RowDefinition Height="Auto" />
-		</Grid.RowDefinitions>
+   <Grid Margin="12" Background="{DynamicResource AppBackgroundBrush}">
+      <Grid.RowDefinitions>
+         <RowDefinition Height="*" />
+         <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
 
-		<TabControl Grid.Row="0">
-			<TabItem Header="General">
-				<ScrollViewer VerticalScrollBarVisibility="Auto">
-					<StackPanel Margin="10">
-						<GroupBox Header="General" Margin="0,0,0,10">
-							<StackPanel Margin="10">
-								<CheckBox Content="Automatically run StickIt when I log on to Windows" IsChecked="{Binding RunOnStartup}" />
-								<CheckBox Content="Dark mode" IsChecked="{Binding DarkMode}" />
-								<CheckBox Content="Show StickIt icon on Windows taskbar" IsChecked="{Binding ShowTaskbarIcon}" />
-								<CheckBox Content="Show StickIt icon inside system tray (notification area)" IsChecked="{Binding ShowTrayIcon}" />
-							</StackPanel>
-						</GroupBox>
+      <TabControl Grid.Row="0">
+         <TabItem Header="General">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+               <StackPanel Margin="10">
+                  <GroupBox Margin="0,0,0,10" Header="General">
+                     <StackPanel Margin="10">
+                        <CheckBox Content="Automatically run StickIt when I log on to Windows" IsChecked="{Binding RunOnStartup}" />
+                        <CheckBox Content="Dark mode" IsChecked="{Binding DarkMode}" />
+                        <CheckBox Content="Show StickIt icon on Windows taskbar" IsChecked="{Binding ShowTaskbarIcon}" />
+                        <CheckBox Content="Show StickIt icon inside system tray (notification area)" IsChecked="{Binding ShowTrayIcon}" />
+                     </StackPanel>
+                  </GroupBox>
 
-						<GroupBox Header="Notes">
-							<StackPanel Margin="10">
-								<CheckBox Content="Always stick new notes to Windows desktop" IsChecked="{Binding AlwaysStickNewNotesToDesktop}" />
-								<CheckBox Content="Snap notes to grid" IsChecked="{Binding SnapNotesToGrid}" />
+                  <GroupBox Header="Notes">
+                     <StackPanel Margin="10">
+                        <CheckBox Content="Always stick new notes to Windows desktop" IsChecked="{Binding AlwaysStickNewNotesToDesktop}" />
+                        <CheckBox Content="Snap notes to grid" IsChecked="{Binding SnapNotesToGrid}" />
 
-								<StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
-									<CheckBox Content="Keep notes inside specific desktop area" IsChecked="{Binding KeepNotesInsideDesktopArea}" VerticalAlignment="Center" />
-									<Button Margin="10,0,0,0" MinWidth="110" Content="Desktop area..." Click="DesktopArea_Click" />
-								</StackPanel>
+                        <StackPanel
+                           Margin="0,6,0,0"
+                           VerticalAlignment="Center"
+                           Orientation="Horizontal">
+                           <CheckBox
+                              VerticalAlignment="Center"
+                              Content="Keep notes inside specific desktop area"
+                              IsChecked="{Binding KeepNotesInsideDesktopArea}" />
+                           <Button
+                              MinWidth="110"
+                              Margin="10,0,0,0"
+                              Click="DesktopArea_Click"
+                              Content="Desktop area..." />
+                        </StackPanel>
 
-								<TextBlock Margin="24,4,0,0" FontSize="11" Foreground="{DynamicResource AppForegroundBrush}" Text="{Binding DesktopAreaSummary}" />
+                        <TextBlock
+                           Margin="24,4,0,0"
+                           FontSize="11"
+                           Foreground="{DynamicResource AppForegroundBrush}"
+                           Text="{Binding DesktopAreaSummary}" />
 
-								<CheckBox Margin="0,8,0,0" Content="Show confirmation message when deleting a note" IsChecked="{Binding ConfirmOnDelete}" />
-								<CheckBox Content="Hide notes on Show Desktop (Win+D)" IsChecked="{Binding HideNotesOnShowDesktop}" />
-								<CheckBox Content="Treat each desktop sticky note as separate top level window" IsChecked="{Binding TreatNotesAsTopLevelWindows}" />
-								<CheckBox Content="Keep separate set of notes on each computer's desktop area" IsChecked="{Binding SeparateNotesPerDesktopArea}" />
-							</StackPanel>
-						</GroupBox>
-					</StackPanel>
-				</ScrollViewer>
-			</TabItem>
+                        <CheckBox
+                           Margin="0,8,0,0"
+                           Content="Show confirmation message when deleting a note"
+                           IsChecked="{Binding ConfirmOnDelete}" />
+                        <CheckBox Content="Hide notes on Show Desktop (Win+D)" IsChecked="{Binding HideNotesOnShowDesktop}" />
+                        <CheckBox Content="Treat each desktop sticky note as separate top level window" IsChecked="{Binding TreatNotesAsTopLevelWindows}" />
+                        <CheckBox Content="Keep separate set of notes on each computer's desktop area" IsChecked="{Binding SeparateNotesPerDesktopArea}" />
+                     </StackPanel>
+                  </GroupBox>
+               </StackPanel>
+            </ScrollViewer>
+         </TabItem>
 
-			<TabItem Header="Note">
-				<ScrollViewer VerticalScrollBarVisibility="Auto">
-					<StackPanel Margin="10">
-						<GroupBox Header="Title &amp; Body (Defaults)" Margin="0,0,0,10">
-							<Grid Margin="10">
-								<Grid.RowDefinitions>
-									<RowDefinition Height="Auto" />
-									<RowDefinition Height="Auto" />
-									<RowDefinition Height="Auto" />
-								</Grid.RowDefinitions>
-								<Grid.ColumnDefinitions>
-									<ColumnDefinition Width="120" />
-									<ColumnDefinition Width="*" />
-									<ColumnDefinition Width="90" />
-								</Grid.ColumnDefinitions>
+         <TabItem Header="Note">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+               <StackPanel Margin="10">
+                  <GroupBox Margin="0,0,0,10" Header="Title &amp; Body (Defaults)">
+                     <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                           <RowDefinition Height="Auto" />
+                           <RowDefinition Height="Auto" />
+                           <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                           <ColumnDefinition Width="120" />
+                           <ColumnDefinition Width="*" />
+                           <ColumnDefinition Width="90" />
+                        </Grid.ColumnDefinitions>
 
-								<TextBlock Grid.Row="0" Text="Title font:" VerticalAlignment="Center" />
-								<ComboBox
+                        <TextBlock
+                           Grid.Row="0"
+                           VerticalAlignment="Center"
+                           Text="Title font:" />
+                        <ComboBox
                            Grid.Row="0"
                            Grid.Column="1"
-                           ItemsSource="{Binding FontFamilies}"
-                           SelectedItem="{Binding TitleFontFamily}"
+                           Margin="0,0,8,0"
                            DisplayMemberPath="Source"
-                           Margin="0,0,8,0" />
-								<ComboBox
+                           ItemsSource="{Binding FontFamilies}"
+                           SelectedItem="{Binding TitleFontFamily}" />
+                        <ComboBox
                            Grid.Row="0"
                            Grid.Column="2"
                            ItemsSource="{Binding FontSizes}"
                            SelectedItem="{Binding TitleFontSize}" />
 
-								<TextBlock Grid.Row="1" Margin="0,8,0,0" Text="Body font:" VerticalAlignment="Center" />
-								<ComboBox
+                        <TextBlock
+                           Grid.Row="1"
+                           Margin="0,8,0,0"
+                           VerticalAlignment="Center"
+                           Text="Body font:" />
+                        <ComboBox
                            Grid.Row="1"
                            Grid.Column="1"
                            Margin="0,8,8,0"
+                           DisplayMemberPath="Source"
                            ItemsSource="{Binding FontFamilies}"
-                           SelectedItem="{Binding BodyFontFamily}"
-                           DisplayMemberPath="Source" />
-								<ComboBox
+                           SelectedItem="{Binding BodyFontFamily}" />
+                        <ComboBox
                            Grid.Row="1"
                            Grid.Column="2"
                            Margin="0,8,0,0"
                            ItemsSource="{Binding FontSizes}"
                            SelectedItem="{Binding BodyFontSize}" />
 
-								<CheckBox
+                        <CheckBox
                            Grid.Row="2"
                            Grid.Column="0"
                            Grid.ColumnSpan="3"
                            Margin="0,10,0,0"
                            Content="Show date along with note title"
                            IsChecked="{Binding ShowDateAlongTitle}" />
-							</Grid>
-						</GroupBox>
+                     </Grid>
+                  </GroupBox>
 
-						<GroupBox Header="Appearance">
-							<StackPanel Margin="10">
-								<CheckBox Content="Enable drop shadow" IsChecked="{Binding EnableDropShadow}" />
-							</StackPanel>
-						</GroupBox>
-					</StackPanel>
-				</ScrollViewer>
-			</TabItem>
-		</TabControl>
+                  <GroupBox Header="Appearance">
+                     <StackPanel Margin="10">
+                        <CheckBox Content="Enable drop shadow" IsChecked="{Binding EnableDropShadow}" />
+                     </StackPanel>
+                  </GroupBox>
+               </StackPanel>
+            </ScrollViewer>
+         </TabItem>
+      </TabControl>
 
-		<StackPanel Grid.Row="1" Margin="0,10,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
-			<Button MinWidth="90" Click="Ok_Click" Content="OK" IsDefault="True" BorderBrush="#FF1C1C1C" Width="112" FontWeight="Bold" FontSize="14" FontFamily="Helvetica" BorderThickness="2,2,2,2" />
-			<Button MinWidth="60" Margin="0,0,8,0" Click="Cancel_Click" Content="Cancel" Width="52" FontFamily="Helvetica" FontStyle="Italic" />
-		</StackPanel>
-	</Grid>
+      <StackPanel
+         Grid.Row="1"
+         Margin="0,10,0,0"
+         HorizontalAlignment="Right"
+         Orientation="Horizontal">
+         <Button
+            Width="52"
+            MinWidth="60"
+            Margin="0,0,8,0"
+            Click="Cancel_Click"
+            Content="Cancel"
+            FontFamily="Helvetica"
+            FontStyle="Italic" />
+         <Button
+            Width="112"
+            MinWidth="90"
+            BorderBrush="#FF1C1C1C"
+            BorderThickness="2,2,2,2"
+            Click="Ok_Click"
+            Content="OK"
+            FontFamily="Helvetica"
+            FontSize="14"
+            FontWeight="Bold"
+            IsDefault="True" />
+      </StackPanel>
+   </Grid>
 </Window>

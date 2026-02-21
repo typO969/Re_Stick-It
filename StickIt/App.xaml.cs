@@ -16,10 +16,6 @@ namespace StickIt
 		private StickItState _state = new();
 		private readonly List<NoteWindow> _windows = new();
 
-		private const int StuckModeUnstuck = 0;
-		private const int StuckModeAlwaysOnTop = 1;
-		private const int StuckModeStuckToApp = 2;
-
 		private bool _isShuttingDown;
 		private TrayIconService? _tray;
 		private DateTime _lastTrayNoticeUtc = DateTime.MinValue;
@@ -106,14 +102,6 @@ namespace StickIt
 			{
 				SpawnWindow(note);
 			}
-
-			//foreach (var p in notes)
-			//{
-			//	SpawnWindow(p);
-			//}
-
-			//foreach (var note in _state.Notes)
-			//	SpawnWindow(note);
 
 			UpdateTrayIcon();
 
@@ -447,17 +435,27 @@ namespace StickIt
 				"Icons",
 				"stickIt_Main.ico");
 
-			var icon = new System.Drawing.Icon(iconPath);
+			if (!System.IO.File.Exists(iconPath))
+				return;
 
-			_tray = new StickIt.Services.TrayIconService(
-				icon,
-				() => Dispatcher.BeginInvoke(new Action(() => CreateNewNoteNear(null))),
-				() => Dispatcher.BeginInvoke(new Action(MinimizeAllNotes)),
-				() => Dispatcher.BeginInvoke(new Action(RestoreAllNotes)),
-				() => Dispatcher.BeginInvoke(new Action(SaveAllNotesNow)),
-				() => Dispatcher.BeginInvoke(new Action(ShowAllNotes)),
-				() => Dispatcher.BeginInvoke(new Action(ShutdownRequested))
-			);
+			try
+			{
+				var icon = new System.Drawing.Icon(iconPath);
+
+				_tray = new StickIt.Services.TrayIconService(
+					icon,
+					() => Dispatcher.BeginInvoke(new Action(() => CreateNewNoteNear(null))),
+					() => Dispatcher.BeginInvoke(new Action(MinimizeAllNotes)),
+					() => Dispatcher.BeginInvoke(new Action(RestoreAllNotes)),
+					() => Dispatcher.BeginInvoke(new Action(SaveAllNotesNow)),
+					() => Dispatcher.BeginInvoke(new Action(ShowAllNotes)),
+					() => Dispatcher.BeginInvoke(new Action(ShutdownRequested))
+				);
+			}
+			catch
+			{
+				// Best-effort tray icon initialization.
+			}
 		}
 
 		public void ShowNoteManager()

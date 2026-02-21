@@ -44,14 +44,11 @@ namespace StickIt.Sticky.Services
 					continue;
 				}
 
-				var title = GetWindowTextSafe(hwnd);
-				if (string.IsNullOrWhiteSpace(title))
-				{
-					hwnd = GetWindow(hwnd, GW_HWNDNEXT);
-					continue;
-				}
-
 				var cls = GetClassNameSafe(hwnd);
+				if (IsDesktopHost(cls))
+					return null;
+
+				var title = GetWindowTextSafe(hwnd);
 
 				string? procName = null;
 				try { procName = Process.GetProcessById((int) pid).ProcessName; } catch { }
@@ -69,6 +66,10 @@ namespace StickIt.Sticky.Services
 
 			return null;
 		}
+
+		private static bool IsDesktopHost(string className)
+			=> string.Equals(className, "Progman", StringComparison.Ordinal)
+			   || string.Equals(className, "WorkerW", StringComparison.Ordinal);
 
 
 		// ---- Win32 ----

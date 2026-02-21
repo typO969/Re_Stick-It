@@ -1,127 +1,155 @@
 ﻿<Window
-	x:Class="StickIt.DebugColorsWindow"
-	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:conv="clr-namespace:StickIt.Converters"
-	Title="StickIt – Color Debug"
-	Width="360"
-	Height="276"
-	ResizeMode="NoResize"
-	WindowStartupLocation="CenterOwner">
+   x:Class="StickIt.DebugColorsWindow"
+   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+   xmlns:conv="clr-namespace:StickIt.Converters"
+   Title="StickIt – Color Debug"
+   Width="360"
+   Height="276"
+   ResizeMode="NoResize"
+   WindowStartupLocation="CenterOwner">
 
-	<Window.Resources>
-		<!--  uses your existing converter  -->
-		<conv:NoteComponentBrushConverter x:Key="NoteComponentBrush" />
-		<conv:NoteComponentHexConverter x:Key="NoteComponentHex" />
-	</Window.Resources>
+   <Window.Resources>
+      <!--  uses your existing converter  -->
+      <conv:NoteComponentBrushConverter x:Key="NoteComponentBrush" />
+      <conv:NoteComponentHexConverter x:Key="NoteComponentHex" />
+   </Window.Resources>
 
-	<Grid Margin="12">
-		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="*" />
-		</Grid.RowDefinitions>
+   <Grid Margin="12">
+      <Grid.RowDefinitions>
+         <RowDefinition Height="Auto" />
+         <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
 
-		<TextBlock
-			Grid.Row="0"
-			FontSize="14"
-			FontWeight="SemiBold"
-			Text="{Binding ColorKey}" />
+      <TextBlock
+         Grid.Row="0"
+         FontSize="14"
+         FontWeight="SemiBold"
+         Text="{Binding ColorKey}" />
 
-		<StackPanel Grid.Row="1" Margin="0,10,0,0">
-			<!--  helper template  -->
-			<StackPanel.Resources>
-				<Style TargetType="Border">
-					<Setter Property="Width" Value="42" />
-					<Setter Property="Height" Value="22" />
-					<Setter Property="CornerRadius" Value="4" />
-					<Setter Property="BorderThickness" Value="1" />
-					<Setter Property="BorderBrush" Value="#33000000" />
-					<Setter Property="Margin" Value="0,0,10,0" />
-				</Style>
-				<Style TargetType="TextBlock">
-					<Setter Property="VerticalAlignment" Value="Center" />
-				</Style>
-			</StackPanel.Resources>
+      <StackPanel Grid.Row="1" Margin="0,10,0,0">
+         <!--  helper template  -->
+         <StackPanel.Resources>
+            <Style TargetType="Border">
+               <Setter Property="Width" Value="42" />
+               <Setter Property="Height" Value="22" />
+               <Setter Property="CornerRadius" Value="4" />
+               <Setter Property="BorderThickness" Value="1" />
+               <Setter Property="BorderBrush" Value="#33000000" />
+               <Setter Property="Margin" Value="0,0,10,0" />
+            </Style>
+            <Style TargetType="TextBlock">
+               <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+         </StackPanel.Resources>
 
-			<!--  One row per component  -->
-			<Grid Margin="0,0,0,8">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
-				</Grid.ColumnDefinitions>
+         <!--  One row per component  -->
+         <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+               <ColumnDefinition Width="Auto" />
+               <ColumnDefinition Width="*" />
+               <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}" />
-				<TextBlock Grid.Column="1" Text="Background [1]" />
-				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Background}" />
-			</Grid>
+            <Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}" />
+            <TextBlock
+               Grid.Column="1"
+               Focusable="True"
+               FontFamily="Helvetica LT Std"
+               FontSize="12"
+               Text="Background [1]" />
+            <TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Background}" />
+         </Grid>
 
-			<Grid Margin="0,0,0,8">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
-				</Grid.ColumnDefinitions>
+         <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+               <ColumnDefinition Width="Auto" />
+               <ColumnDefinition Width="*" />
+               <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=ControlBar}" />
-				<TextBlock Grid.Column="1" Text="ControlBar (13 - [1])" />
-				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=ControlBar}" />
-			</Grid>
+            <Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=ControlBar}" />
+            <TextBlock
+               Grid.Column="1"
+               Focusable="True"
+               FontFamily="Helvetica LT Std"
+               FontSize="12"
+               Text="ControlBar (13 - [1])" />
+            <TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=ControlBar}" />
+         </Grid>
 
-			<Grid Margin="0,0,0,8">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
-				</Grid.ColumnDefinitions>
+         <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+               <ColumnDefinition Width="Auto" />
+               <ColumnDefinition Width="*" />
+               <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}" />
-				<TextBlock Grid.Column="1" Text="Buttons (50 - [1])" />
-				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Buttons}" />
-			</Grid>
+            <Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}" />
+            <TextBlock
+               Grid.Column="1"
+               Focusable="True"
+               FontFamily="Helvetica LT Std"
+               FontSize="12"
+               Text="Buttons (50 - [1])" />
+            <TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Buttons}" />
+         </Grid>
 
-			<Grid Margin="0,0,0,8">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="79*" />
-					<ColumnDefinition Width="205*" />
-					<ColumnDefinition Width="Auto" />
-				</Grid.ColumnDefinitions>
+         <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+               <ColumnDefinition Width="Auto" />
+               <ColumnDefinition Width="79*" />
+               <ColumnDefinition Width="205*" />
+               <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-				<Border
-					Grid.Column="0"
-					Margin="0,0,10,0"
-					Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Outlines}" />
-				<TextBlock
-					Grid.Column="1"
-					Grid.ColumnSpan="2"
-					Text="Outlines (halve [1])" />
-				<TextBlock Grid.Column="3" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Outlines}" />
-			</Grid>
+            <Border
+               Grid.Column="0"
+               Margin="0,0,10,0"
+               Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Outlines}" />
+            <TextBlock
+               Grid.Column="1"
+               Grid.ColumnSpan="2"
+               Focusable="True"
+               FontFamily="Helvetica LT Std"
+               FontSize="12"
+               Text="Outlines (halve [1])" />
+            <TextBlock Grid.Column="3" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Outlines}" />
+         </Grid>
 
-			<Grid Margin="0,0,0,8">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
-				</Grid.ColumnDefinitions>
+         <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+               <ColumnDefinition Width="Auto" />
+               <ColumnDefinition Width="*" />
+               <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}" />
-				<TextBlock Grid.Column="1" Text="Highlights (30,100,25 + [1])" />
-				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Highlights}" />
-			</Grid>
+            <Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}" />
+            <TextBlock
+               Grid.Column="1"
+               Focusable="True"
+               FontFamily="Helvetica LT Std"
+               FontSize="12"
+               Text="Highlights (30,100,25 + [1])" />
+            <TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Highlights}" />
+         </Grid>
 
-			<Grid Margin="0,0,0,8">
-				<Grid.ColumnDefinitions>
-					<ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="*" />
-					<ColumnDefinition Width="Auto" />
-				</Grid.ColumnDefinitions>
+         <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+               <ColumnDefinition Width="Auto" />
+               <ColumnDefinition Width="*" />
+               <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-				<Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}" />
-				<TextBlock Grid.Column="1" Text="Text  (halve (50 - [1]) -5)" />
-				<TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Text}" />
-			</Grid>
-		</StackPanel>
-	</Grid>
+            <Border Grid.Column="0" Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}" />
+            <TextBlock
+               Grid.Column="1"
+               Focusable="True"
+               FontFamily="Helvetica LT Std"
+               FontSize="12"
+               Text="Text  (halve (50 - [1]) -5)" />
+            <TextBlock Grid.Column="2" Text="{Binding ColorKey, Converter={StaticResource NoteComponentHex}, ConverterParameter=Text}" />
+         </Grid>
+      </StackPanel>
+   </Grid>
 </Window>

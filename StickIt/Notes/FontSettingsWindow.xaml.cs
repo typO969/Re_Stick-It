@@ -44,6 +44,7 @@ namespace StickIt
 		public bool IsUnderline { get; set; }
 		public System.Windows.Media.Color Color { get; set; } = System.Windows.Media.Colors.Black;
 		public bool ApplyToSelection { get; set; } = true;
+		public bool ApplyToEntireNote { get; set; }
 	}
 
 	public sealed class FontSettingsViewModel : INotifyPropertyChanged
@@ -65,16 +66,40 @@ namespace StickIt
 			set
 			{
 				if (SetField(ref _applyToSelection, value))
+				{
+					if (value)
+						_applyToEntireNote = false;
 					OnPropertyChanged(nameof(ApplyToDefaults));
+					OnPropertyChanged(nameof(ApplyToEntireNote));
+				}
+			}
+		}
+
+		public bool ApplyToEntireNote
+		{
+			get => _applyToEntireNote;
+			set
+			{
+				if (SetField(ref _applyToEntireNote, value))
+				{
+					if (value)
+						_applyToSelection = false;
+					OnPropertyChanged(nameof(ApplyToDefaults));
+					OnPropertyChanged(nameof(ApplyToSelection));
+				}
 			}
 		}
 
 		public bool ApplyToDefaults
 		{
-			get => !_applyToSelection;
+			get => !_applyToSelection && !_applyToEntireNote;
 			set
 			{
-				ApplyToSelection = !value;
+				if (value)
+				{
+					ApplyToSelection = false;
+					ApplyToEntireNote = false;
+				}
 			}
 		}
 
@@ -89,6 +114,7 @@ namespace StickIt
 		private bool _isUnderline;
 		private ColorItem _selectedColor = ColorItem.FromColor("Black", System.Windows.Media.Colors.Black);
 		private bool _applyToSelection = true;
+		private bool _applyToEntireNote;
 
 		public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -108,7 +134,8 @@ namespace StickIt
 				IsBold = settings.IsBold,
 				IsItalic = settings.IsItalic,
 				IsUnderline = settings.IsUnderline,
-				ApplyToSelection = settings.ApplyToSelection
+				ApplyToSelection = settings.ApplyToSelection,
+				ApplyToEntireNote = settings.ApplyToEntireNote
 			};
 
 			vm.SelectedColor = vm.Colors.FirstOrDefault(c => c.Color == settings.Color) ?? vm.Colors.First();
@@ -125,7 +152,8 @@ namespace StickIt
 				IsItalic = IsItalic,
 				IsUnderline = IsUnderline,
 				Color = SelectedColor.Color,
-				ApplyToSelection = ApplyToSelection
+				ApplyToSelection = ApplyToSelection,
+				ApplyToEntireNote = ApplyToEntireNote
 			};
 		}
 

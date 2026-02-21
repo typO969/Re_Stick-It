@@ -6,10 +6,6 @@ using System.Text;
 using System.Windows.Markup;
 using System.Windows.Media;
 
-using StickIt.Models;
-using StickIt.Services;
-using StickIt;
-
 namespace StickIt.Converters
 {
 	public enum ColorComponent
@@ -45,7 +41,6 @@ namespace StickIt.Converters
 
 	public static class ColorSchemeConverter
 	{
-		private const double TextReductionFactor = 0.66666d; // Aligns with spec example (2/3 approximation)
 		private static readonly ConcurrentDictionary<string, ColorSchemeResult> Cache = new(StringComparer.OrdinalIgnoreCase);
 
 		public static System.Windows.Media.Color GetColor(string colorName, string baseColorHex, ColorComponent component)
@@ -68,10 +63,8 @@ namespace StickIt.Converters
 			var buttons = Subtract(background, (50, 50, 50));
 			var highlights = Add(background, (30, 100, 25));
 			var outlines = Halve(background);
-			var text = Subtract(Halve(buttons), (5, 5, 3));			
+			var text = Subtract(Halve(buttons), (5, 5, 3));
 			text = EnsureReadableInk(text, background);
-
-			//var text = ReduceByApproximateTwoThirds(outlines);
 
 			var components = new Dictionary<ColorComponent, RgbVector>
 			{
@@ -95,22 +88,6 @@ namespace StickIt.Converters
 
 			return new ColorSchemeResult(sanitizedName, components, namedVectors);
 		}
-
-		private static RgbVector ReduceByApproximateTwoThirds(RgbVector source)
-		{
-			double Apply(double channel)
-			{
-				var reduction = Math.Floor(channel * TextReductionFactor);
-				return ClampChannel((int) (channel - reduction));
-			}
-
-			return new RgbVector(
-				 Apply(source.R),
-				 Apply(source.G),
-				 Apply(source.B)
-			);
-		}
-
 
 		private static RgbVector EnsureReadableInk(RgbVector darkInk, RgbVector bg)
 		{
@@ -147,22 +124,6 @@ namespace StickIt.Converters
 			 );
 
 
-
-		private static RgbVector EnsureMinLumaDelta(RgbVector text, RgbVector bg, double minDelta)
-		{
-			double Lb = RelLuma(bg);
-
-			var t = text;
-			for (int i = 0; i < 16; i++)
-			{
-				if (Math.Abs(RelLuma(t) - Lb) >= minDelta)
-					return t;
-
-				t = Subtract(t, (12, 12, 10)); // step darker
-			}
-
-			return t;
-		}
 
 		private static double RelLuma(RgbVector v)
 		{
@@ -291,11 +252,18 @@ namespace StickIt.Converters
 		{
 			if (string.IsNullOrWhiteSpace(BaseColor))
 			{
-				throw new InvalidOperationException("BaseColor must be provided.");
+				return Colors.Transparent;
 			}
 
 			var effectiveName = string.IsNullOrWhiteSpace(ColorName) ? BaseColor : ColorName;
-			return ColorSchemeConverter.GetColor(effectiveName, BaseColor, Component);
+			try
+			{
+				return ColorSchemeConverter.GetColor(effectiveName, BaseColor, Component);
+			}
+			catch (Exception)
+			{
+				return Colors.Transparent;
+			}
 		}
 	}
 }

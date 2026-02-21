@@ -28,6 +28,18 @@ namespace StickIt
 			HeightBox.Text = SystemParameters.VirtualScreenHeight.ToString("0", CultureInfo.InvariantCulture);
 		}
 
+		private void PickOnScreen_Click(object sender, RoutedEventArgs e)
+		{
+			var picker = new DesktopAreaPickerWindow { Owner = this };
+			if (picker.ShowDialog() != true || picker.SelectedArea == null)
+				return;
+
+			LeftBox.Text = picker.SelectedArea.Left.ToString("0", CultureInfo.InvariantCulture);
+			TopBox.Text = picker.SelectedArea.Top.ToString("0", CultureInfo.InvariantCulture);
+			WidthBox.Text = picker.SelectedArea.Width.ToString("0", CultureInfo.InvariantCulture);
+			HeightBox.Text = picker.SelectedArea.Height.ToString("0", CultureInfo.InvariantCulture);
+		}
+
 		private void Ok_Click(object sender, RoutedEventArgs e)
 		{
 			if (!TryParse(LeftBox.Text, out var left) ||

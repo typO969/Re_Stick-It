@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
 
+using StickIt.Converters;
 using StickIt.Models;
 using StickIt.Services;
 using StickIt.Sticky.Services;
@@ -243,6 +244,25 @@ namespace StickIt
 
          KeyDown += (_, e) =>
          {
+				if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)
+					&& e.Key == Key.S)
+				{
+					btnPinCycle_Click(this, new RoutedEventArgs());
+					e.Handled = true;
+					return;
+				}
+
+				if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift)
+					&& e.Key == Key.S)
+				{
+					if (_noteStuckMode == 2)
+						Sticky_NotStuck_Click(this, new RoutedEventArgs());
+					else
+						Sticky_Auto_Click(this, new RoutedEventArgs());
+					e.Handled = true;
+					return;
+				}
+
             // Ctrl+N / Ctrl+W / Ctrl+M
             if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
             {
@@ -591,6 +611,7 @@ namespace StickIt
          var range = new TextRange(start, start); // empty range == typing style only
          range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily(familyName));
          range.ApplyPropertyValue(TextElement.FontSizeProperty, sizePt);
+         range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
 
       }
 
@@ -822,6 +843,10 @@ namespace StickIt
          if (settings.ApplyToSelection)
          {
             range = new TextRange(txtNoteContent.Selection.Start, txtNoteContent.Selection.End);
+         }
+         else if (settings.ApplyToEntireNote)
+         {
+            range = new TextRange(txtNoteContent.Document.ContentStart, txtNoteContent.Document.ContentEnd);
          }
          else
          {
@@ -1139,8 +1164,9 @@ namespace StickIt
          var t = TryGetTargetWindowUnderNote(); // (we’ll implement/fix next)
          if (t == null)
          {
-            // Optional: fallback to picker if auto fails
-            Sticky_Pick_Click(sender, e);
+            var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
+            if (desk != null)
+               EnterStuckMode2WithTarget(desk);
             return;
          }
 
@@ -1186,6 +1212,27 @@ namespace StickIt
          StuckMode = mode;
          Topmost = (mode == 1);
          UpdateStickyVisuals();
+      }
+
+      private System.Windows.Media.Color GetDefaultTextColor()
+      {
+         if (_note == null)
+            return System.Windows.Media.Colors.Black;
+
+         var baseHex = NoteColors.Hex[_note.ColorKey];
+         return ColorSchemeConverter.GetColor(_note.ColorKey.ToString(), baseHex, ColorComponent.Text);
+      }
+
+      private void ApplyDefaultTextInkToTyping()
+      {
+         if (txtNoteContent == null)
+            return;
+
+         TextPointer start = txtNoteContent.CaretPosition ?? txtNoteContent.Document.ContentStart;
+         start = start.GetInsertionPosition(LogicalDirection.Forward) ?? txtNoteContent.Document.ContentStart;
+
+         var range = new TextRange(start, start);
+         range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
       }
 
       private void Sticky_NotStuck_Click(object sender, RoutedEventArgs e)
@@ -1273,31 +1320,17 @@ namespace StickIt
       {
          if (NoteChrome == null) return;
 
-         // NOTE: do NOT touch NoteChrome.BorderBrush (it’s bound to ColorKey pipeline)
+         NoteChrome.ClearValue(Border.BorderThicknessProperty);
 
-         switch (_noteStuckMode)
+         if (_dropShadowEnabled)
+            NoteChrome.ClearValue(Border.EffectProperty);
+         else
+            NoteChrome.Effect = null;
+
+         if (StickyAccent != null)
          {
-            case 1: // AOT
-               NoteChrome.BorderThickness = new Thickness(6);
-               NoteChrome.Effect = _dropShadowEnabled ? new DropShadowEffect { BlurRadius = 24, ShadowDepth = 3, Opacity = 0.45 } : null;
-               if (StickyAccent != null) StickyAccent.BorderBrush = System.Windows.Media.Brushes.Transparent;
-               break;
-
-            case 2: // Stuck
-               NoteChrome.BorderThickness = new Thickness(12);
-               NoteChrome.Effect = _dropShadowEnabled ? new DropShadowEffect { BlurRadius = 34, ShadowDepth = 0, Opacity = 0.45 } : null;
-               if (StickyAccent != null)
-               {
-                  StickyAccent.BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(140, 255, 200, 80));
-                  StickyAccent.BorderThickness = new Thickness(6);
-               }
-               break;
-
-            default: // Normal
-               NoteChrome.BorderThickness = new Thickness(2);
-               NoteChrome.Effect = _dropShadowEnabled ? new DropShadowEffect { BlurRadius = 14, ShadowDepth = 2, Opacity = 0.25 } : null;
-               if (StickyAccent != null) StickyAccent.BorderBrush = System.Windows.Media.Brushes.Transparent;
-               break;
+            StickyAccent.ClearValue(Border.BorderBrushProperty);
+            StickyAccent.ClearValue(Border.BorderThicknessProperty);
          }
       }
 

@@ -82,31 +82,38 @@ namespace StickIt.Persistence
 			if (_lastSavedSnapshot == snapshot)
 				return;
 
-			var path = GetStateFilePath();
-			var tmp = path + ".tmp";
-			var bak = path + ".bak";
-
-			File.WriteAllText(tmp, snapshot, Encoding.UTF8);
-
-			if (File.Exists(path))
+			try
 			{
-				try
+				var path = GetStateFilePath();
+				var tmp = path + ".tmp";
+				var bak = path + ".bak";
+
+				File.WriteAllText(tmp, snapshot, Encoding.UTF8);
+
+				if (File.Exists(path))
 				{
-					File.Copy(path, bak, overwrite: true);
+					try
+					{
+						File.Copy(path, bak, overwrite: true);
+					}
+					catch
+					{
+						// Backup failure should not block save
+					}
+
+					File.Replace(tmp, path, null);
 				}
-				catch
+				else
 				{
-					// Backup failure should not block save
+					File.Move(tmp, path);
 				}
 
-				File.Replace(tmp, path, null);
+				_lastSavedSnapshot = snapshot;
 			}
-			else
+			catch
 			{
-				File.Move(tmp, path);
+				// Best-effort persistence.
 			}
-
-			_lastSavedSnapshot = snapshot;
 		}
 
 		private static string Snapshot(StickItState state)
