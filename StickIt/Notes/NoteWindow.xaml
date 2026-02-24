@@ -58,18 +58,23 @@
          </Setter>
       </Style>
       <Style x:Key="PinIconButtonStyle" TargetType="Button" BasedOn="{StaticResource NoteIconButton}">
+         <Setter Property="BorderThickness" Value="1" />
          <Style.Triggers>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
+               <Setter Property="Background" Value="Black" />
+               <Setter Property="BorderBrush" Value="Black" />
                <Setter Property="Foreground" Value="White" />
             </DataTrigger>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
-               <Setter Property="Foreground" Value="Black" />
+               <Setter Property="Background" Value="#FF0000" />
+               <Setter Property="BorderBrush" Value="#FF0000" />
+               <Setter Property="Foreground" Value="White" />
             </DataTrigger>
          </Style.Triggers>
       </Style>
       <Style x:Key="NoteChromeStyle" TargetType="Border">
          <!--  Mode 0 defaults  -->
-         <Setter Property="BorderThickness" Value="6" />
+         <Setter Property="BorderThickness" Value="3" />
          <Setter Property="BorderBrush" Value="#55000000" />
          <Setter Property="Effect">
             <Setter.Value>
@@ -84,8 +89,7 @@
 
             <!--  Mode 1: Always on top (thicker + slightly stronger shadow)  -->
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
-               <Setter Property="BorderThickness" Value="8" />
-               <Setter Property="BorderBrush" Value="White" />
+               <Setter Property="BorderBrush" Value="Black" />
                <Setter Property="Effect">
                   <Setter.Value>
                      <DropShadowEffect
@@ -98,7 +102,6 @@
 
             <!--  Mode 2: Stuck (thicker + “tape/glow” vibe via softer shadow)  -->
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
-               <Setter Property="BorderThickness" Value="5" />
                <Setter Property="BorderBrush" Value="#FF0000" />
                <Setter Property="Effect">
                   <Setter.Value>
@@ -119,12 +122,12 @@
          <Setter Property="BorderThickness" Value="5" />
          <Style.Triggers>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
-               <Setter Property="BorderBrush" Value="#CCFFFFFF" />
-               <Setter Property="BorderThickness" Value="6" />
+               <Setter Property="BorderBrush" Value="#CC000000" />
+               <Setter Property="BorderThickness" Value="5" />
             </DataTrigger>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
                <Setter Property="BorderBrush" Value="#FF0000" />
-               <Setter Property="BorderThickness" Value="7" />
+               <Setter Property="BorderThickness" Value="5" />
             </DataTrigger>
          </Style.Triggers>
       </Style>
@@ -133,8 +136,8 @@
          <Setter Property="BorderThickness" Value="5" />
          <Style.Triggers>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
-               <Setter Property="BorderBrush" Value="#CCFFFFFF" />
-               <Setter Property="BorderThickness" Value="8" />
+               <Setter Property="BorderBrush" Value="#CC000000" />
+               <Setter Property="BorderThickness" Value="4" />
             </DataTrigger>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="2">
                <Setter Property="BorderBrush" Value="#FF0000" />
