@@ -7,6 +7,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Platforms>AnyCPU;x64;x86</Platforms>
+    <ApplicationIcon>Properties\Icons\re_stickit.ico</ApplicationIcon>
+    <PackageIcon>re_stickit-icon.jpg</PackageIcon>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="prefs2ThinkAbout__gather-red.png" />
@@ -14,9 +16,16 @@
     <None Remove="stickit_prefsIdeas.pdf" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Properties\Icons\re_stickit.ico" />
     <Content Include="Properties\Icons\stickIt_Main.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Properties\Icons\re_stickit-icon.jpg">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 
