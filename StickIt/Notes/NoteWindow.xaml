@@ -25,9 +25,9 @@
          <Setter Property="Padding" Value="0" />
          <Setter Property="BorderThickness" Value="0" />
          <Setter Property="FontSize" Value="8" />
-         <Setter Property="Background" Value="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}" />
-         <Setter Property="BorderBrush" Value="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}" />
-         <Setter Property="Foreground" Value="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}" />
+         <Setter Property="Background" Value="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}" />
+         <Setter Property="BorderBrush" Value="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}" />
+         <Setter Property="Foreground" Value="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}" />
          <Setter Property="Template">
             <Setter.Value>
                <ControlTemplate TargetType="Button">
@@ -57,7 +57,10 @@
             </Setter.Value>
          </Setter>
       </Style>
-      <Style x:Key="PinIconButtonStyle" TargetType="Button" BasedOn="{StaticResource NoteIconButton}">
+      <Style
+         x:Key="PinIconButtonStyle"
+         BasedOn="{StaticResource NoteIconButton}"
+         TargetType="Button">
          <Setter Property="BorderThickness" Value="1" />
          <Style.Triggers>
             <DataTrigger Binding="{Binding StuckMode, RelativeSource={RelativeSource AncestorType=Window}}" Value="1">
@@ -168,7 +171,7 @@
          x:Name="NoteChrome"
          Padding="0"
          Background="{Binding PaperBrush}"
-         BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
+         BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
          BorderThickness="1"
          CornerRadius="1"
          Style="{StaticResource NoteChromeStyle}">
@@ -177,306 +180,313 @@
          <Border.ContextMenu>
             <ContextMenu>
 
-            <!--  Lifecycle  -->
-            <MenuItem
-               Click="Menu_NewNote"
-               Header="Add note"
-               InputGestureText="Ctrl+N" />
-            <MenuItem
-               Click="Menu_Delete"
-               Header="Delete note"
-               InputGestureText="Ctrl+W" />
+               <!--  Lifecycle  -->
+               <MenuItem
+                  Click="Menu_NewNote"
+                  Header="Add note"
+                  InputGestureText="Ctrl+N" />
+               <MenuItem
+                  Click="Menu_Delete"
+                  Header="Delete note"
+                  InputGestureText="Ctrl+W" />
 
-            <Separator />
-
-            <!--  Color  -->
-            <MenuItem
-               x:Name="miNoteColors"
-               Header="Note colors"
-               SubmenuOpened="NoteColors_SubmenuOpened">
-
-               <MenuItem
-                  x:Name="NeonPinkMenuItem"
-                  Click="Menu_Color"
-                  Header="Neon Pink"
-                  Tag="NeonPink">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#dc39e5"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="MulberryMenuItem"
-                  Click="Menu_Color"
-                  Header="Mulberry"
-                  Tag="Mulberry">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#974F70"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="FireballFuchsiaMenuItem"
-                  Click="Menu_Color"
-                  Header="Fireball Fuchsia"
-                  Tag="FireballFuchsia">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#DD4B99"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="PoppyMenuItem"
-                  Click="Menu_Color"
-                  Header="Poppy"
-                  Tag="Poppy">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#C67D4D"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="SaffronMenuItem"
-                  Click="Menu_Color"
-                  Header="Saffron"
-                  Tag="Saffron">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#CB5147"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="CurryMenuItem"
-                  Click="Menu_Color"
-                  Header="Curry"
-                  Tag="Curry">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#F0B555"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="ThreeMYellowMenuItem"
-                  Click="Menu_Color"
-                  Header="3M Yellow (Default)"
-                  Tag="ThreeMYellow">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#F7E03D"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="CanaryYellowMenuItem"
-                  Click="Menu_Color"
-                  Header="Canary Yellow"
-                  Tag="CanaryYellow">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#F9F8BC"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="NeonGreenMenuItem"
-                  Click="Menu_Color"
-                  Header="Neon Green"
-                  Tag="NeonGreen">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#A6FC41"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="AsparagusMenuItem"
-                  Click="Menu_Color"
-                  Header="Asparagus"
-                  Tag="Asparagus">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#809840"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="EmeraldMenuItem"
-                  Click="Menu_Color"
-                  Header="Emerald"
-                  Tag="Emerald">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#62BDB8"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-               <MenuItem
-                  x:Name="MediterraneanBlueMenuItem"
-                  Click="Menu_Color"
-                  Header="Mediterranean Blue"
-                  Tag="MediterraneanBlue">
-                  <MenuItem.Icon>
-                     <Border
-                        Width="12"
-                        Height="12"
-                        Background="#4077C4"
-                        BorderBrush="#66000000"
-                        BorderThickness="1"
-                        CornerRadius="2" />
-                  </MenuItem.Icon>
-               </MenuItem>
-            </MenuItem>
-
-            <Separator />
-
-            <!--  Them there stickin modes, look out, y'all!  -->
-            <MenuItem
-               x:Name="miStickyRoot"
-               Header="Sticky"
-               SubmenuOpened="Sticky_SubmenuOpened">
-               <MenuItem
-                  x:Name="miSticky_NotStuck"
-                  Click="Sticky_NotStuck_Click"
-                  Header="Not stuck" />
-               <MenuItem
-                  x:Name="miSticky_AOT"
-                  Click="Sticky_AOT_Click"
-                  Header="Always on top" />
                <Separator />
+
+               <!--  Color  -->
                <MenuItem
-                  x:Name="miSticky_Auto"
-                  Click="Sticky_Auto_Click"
-                  Header="Stick note" />
+                  x:Name="miNoteColors"
+                  Header="Note colors"
+                  SubmenuOpened="NoteColors_SubmenuOpened">
+
+                  <MenuItem
+                     x:Name="NeonPinkMenuItem"
+                     Click="Menu_Color"
+                     Header="Neon Pink"
+                     Tag="NeonPink">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#dc39e5"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="MulberryMenuItem"
+                     Click="Menu_Color"
+                     Header="Mulberry"
+                     Tag="Mulberry">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#974F70"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="FireballFuchsiaMenuItem"
+                     Click="Menu_Color"
+                     Header="Fireball Fuchsia"
+                     Tag="FireballFuchsia">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#DD4B99"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="PoppyMenuItem"
+                     Click="Menu_Color"
+                     Header="Poppy"
+                     Tag="Poppy">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#C67D4D"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="SaffronMenuItem"
+                     Click="Menu_Color"
+                     Header="Saffron"
+                     Tag="Saffron">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#CB5147"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="CurryMenuItem"
+                     Click="Menu_Color"
+                     Header="Curry"
+                     Tag="Curry">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#F0B555"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="ThreeMYellowMenuItem"
+                     Click="Menu_Color"
+                     Header="3M Yellow (Default)"
+                     Tag="ThreeMYellow">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#F7E03D"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="CanaryYellowMenuItem"
+                     Click="Menu_Color"
+                     Header="Canary Yellow"
+                     Tag="CanaryYellow">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#F9F8BC"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="NeonGreenMenuItem"
+                     Click="Menu_Color"
+                     Header="Neon Green"
+                     Tag="NeonGreen">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#A6FC41"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="AsparagusMenuItem"
+                     Click="Menu_Color"
+                     Header="Asparagus"
+                     Tag="Asparagus">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#809840"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="EmeraldMenuItem"
+                     Click="Menu_Color"
+                     Header="Emerald"
+                     Tag="Emerald">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#62BDB8"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+                  <MenuItem
+                     x:Name="MediterraneanBlueMenuItem"
+                     Click="Menu_Color"
+                     Header="Mediterranean Blue"
+                     Tag="MediterraneanBlue">
+                     <MenuItem.Icon>
+                        <Border
+                           Width="12"
+                           Height="12"
+                           Background="#4077C4"
+                           BorderBrush="#66000000"
+                           BorderThickness="1"
+                           CornerRadius="2" />
+                     </MenuItem.Icon>
+                  </MenuItem>
+               </MenuItem>
+
                <MenuItem
-                  x:Name="miSticky_Pick"
-                  Click="Sticky_Pick_Click"
-                  Header="Stick note to specific window..." />
+                  x:Name="miSkins"
+                  Header="Skins"
+                  SubmenuOpened="Skins_SubmenuOpened">
+                  <MenuItem Header="Loading..." IsEnabled="False" />
+               </MenuItem>
+
                <Separator />
+
+               <!--  Them there stickin modes, look out, y'all!  -->
                <MenuItem
-                  x:Name="miSticky_SnapNow"
-                  Click="Sticky_SnapNow_Click"
-                  Header="Snap to target now (debug)" />
-            </MenuItem>
+                  x:Name="miStickyRoot"
+                  Header="Sticky"
+                  SubmenuOpened="Sticky_SubmenuOpened">
+                  <MenuItem
+                     x:Name="miSticky_NotStuck"
+                     Click="Sticky_NotStuck_Click"
+                     Header="Not stuck" />
+                  <MenuItem
+                     x:Name="miSticky_AOT"
+                     Click="Sticky_AOT_Click"
+                     Header="Always on top" />
+                  <Separator />
+                  <MenuItem
+                     x:Name="miSticky_Auto"
+                     Click="Sticky_Auto_Click"
+                     Header="Stick note" />
+                  <MenuItem
+                     x:Name="miSticky_Pick"
+                     Click="Sticky_Pick_Click"
+                     Header="Stick note to specific window..." />
+                  <Separator />
+                  <MenuItem
+                     x:Name="miSticky_SnapNow"
+                     Click="Sticky_SnapNow_Click"
+                     Header="Snap to target now (debug)" />
+               </MenuItem>
 
-            <Separator />
+               <Separator />
 
-            <!--  Font  -->
-            <MenuItem Click="Menu_FontSettings" Header="Font settings..." />
-            <MenuItem Header="Font _Properties">
+               <!--  Font  -->
+               <MenuItem Click="Menu_FontSettings" Header="Font settings..." />
+               <MenuItem Header="Font _Properties">
+                  <MenuItem
+                     x:Name="miBold"
+                     Command="{x:Static local:NoteWindow.CmdBold}"
+                     Header="_Bold"
+                     IsCheckable="True" />
+                  <MenuItem
+                     x:Name="miItalic"
+                     Command="{x:Static local:NoteWindow.CmdItalic}"
+                     Header="_Italic"
+                     IsCheckable="True" />
+                  <MenuItem
+                     x:Name="miUnderline"
+                     Command="{x:Static local:NoteWindow.CmdUnderline}"
+                     Header="_Underline"
+                     IsCheckable="True" />
+               </MenuItem>
+
+
+               <Separator />
+
+               <!--  Properties  -->
+               <MenuItem Click="Menu_NoteProperties" Header="Note properties..." />
+
+               <Separator />
+
+               <!--  Editing  -->
+               <MenuItem Click="Menu_Cut" Header="Cut" />
+               <MenuItem Click="Menu_Copy" Header="Copy" />
+               <MenuItem Click="Menu_Paste" Header="Paste" />
+
+               <Separator />
+
+               <!--  Save/Load (note: you already autosave, but keep these for parity)  -->
+               <MenuItem Click="Menu_SaveNow" Header="Save notes now" />
                <MenuItem
-                  x:Name="miBold"
-                  Command="{x:Static local:NoteWindow.CmdBold}"
-                  Header="_Bold"
-                  IsCheckable="True" />
+                  Click="Menu_LoadNotes"
+                  Header="Load notes..."
+                  IsEnabled="False" />
+
+               <Separator />
+
+               <!--  Window state  -->
                <MenuItem
-                  x:Name="miItalic"
-                  Command="{x:Static local:NoteWindow.CmdItalic}"
-                  Header="_Italic"
-                  IsCheckable="True" />
-               <MenuItem
-                  x:Name="miUnderline"
-                  Command="{x:Static local:NoteWindow.CmdUnderline}"
-                  Header="_Underline"
-                  IsCheckable="True" />
-            </MenuItem>
+                  Click="Menu_Minimize"
+                  Header="Minimize"
+                  InputGestureText="Ctrl+M" />
+               <MenuItem Click="Menu_Restore" Header="Restore" />
+               <MenuItem Click="Menu_MinimizeAll" Header="Minimize all notes" />
+               <MenuItem Click="Menu_RestoreAll" Header="Restore hidden notes" />
 
+               <Separator />
 
-            <Separator />
+               <!--  App-level  -->
+               <MenuItem Click="Menu_Preferences" Header="Preferences..." />
+               <MenuItem Click="Menu_NoteManager" Header="Note manager..." />
 
-            <!--  Properties  -->
-            <MenuItem Click="Menu_NoteProperties" Header="Note properties..." />
+               <Separator />
 
-            <Separator />
+               <!--  Debug parity  -->
+               <MenuItem Click="Menu_Debug" Header="Colors Debug" />
 
-            <!--  Editing  -->
-            <MenuItem Click="Menu_Cut" Header="Cut" />
-            <MenuItem Click="Menu_Copy" Header="Copy" />
-            <MenuItem Click="Menu_Paste" Header="Paste" />
+               <Separator />
 
-            <Separator />
-
-            <!--  Save/Load (note: you already autosave, but keep these for parity)  -->
-            <MenuItem Click="Menu_SaveNow" Header="Save notes now" />
-            <MenuItem
-               Click="Menu_LoadNotes"
-               Header="Load notes..."
-               IsEnabled="False" />
-
-            <Separator />
-
-            <!--  Window state  -->
-            <MenuItem
-               Click="Menu_Minimize"
-               Header="Minimize"
-               InputGestureText="Ctrl+M" />
-            <MenuItem Click="Menu_Restore" Header="Restore" />
-            <MenuItem Click="Menu_MinimizeAll" Header="Minimize all notes" />
-            <MenuItem Click="Menu_RestoreAll" Header="Restore hidden notes" />
-
-            <Separator />
-
-            <!--  App-level  -->
-            <MenuItem Click="Menu_Preferences" Header="Preferences..." />
-            <MenuItem Click="Menu_NoteManager" Header="Note manager..." />
-
-            <Separator />
-
-            <!--  Debug parity  -->
-            <MenuItem Click="Menu_Debug" Header="Properties (debug)" />
-
-            <Separator />
-
-            <MenuItem Click="Menu_Exit" Header="Quit StickIt" />
+               <MenuItem Click="Menu_Exit" Header="Quit StickIt" />
             </ContextMenu>
          </Border.ContextMenu>
 
@@ -489,196 +499,196 @@
 
 
             <Grid>
-            <Grid.RowDefinitions>
-               <RowDefinition Height="25" />
-               <RowDefinition Height="25" />
-               <RowDefinition Height="350" />
-            </Grid.RowDefinitions>
+               <Grid.RowDefinitions>
+                  <RowDefinition Height="25" />
+                  <RowDefinition Height="25" />
+                  <RowDefinition Height="350" />
+               </Grid.RowDefinitions>
 
-            <!--  Control Bar  -->
-            <Border
-               x:Name="ControlBar"
-               Grid.Row="0"
-               HorizontalAlignment="Stretch"
-               VerticalAlignment="Stretch"
-               Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=ControlBar}">
+               <!--  Control Bar  -->
+               <Border
+                  x:Name="ControlBar"
+                  Grid.Row="0"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch"
+                  Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=ControlBar}">
 
-               <Grid>
-                  <Grid.ColumnDefinitions>
-                     <ColumnDefinition Width="*" />
-                     <ColumnDefinition Width="Auto" />
-                  </Grid.ColumnDefinitions>
+                  <Grid>
+                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                     </Grid.ColumnDefinitions>
 
-                  <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+                     <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
 
-                     <Button
-                        x:Name="btnClose"
-                        Margin="20,0,0,0"
-                        Click="btnClose_Click"
-                        Content=""
-                        Style="{StaticResource NoteIconButton}"
-                        ToolTip="Close">
+                        <Button
+                           x:Name="btnClose"
+                           Margin="20,0,0,0"
+                           Click="btnClose_Click"
+                           Content=""
+                           Style="{StaticResource NoteIconButton}"
+                           ToolTip="Close">
 
-                        <Button.Template>
-                           <ControlTemplate TargetType="Button">
-
-                              <Border
-                                 Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-                                 BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
-                                 BorderThickness="1"
-                                 CornerRadius="2"
-                                 Opacity="0.80">
+                           <Button.Template>
+                              <ControlTemplate TargetType="Button">
 
                                  <Border
-                                    Margin="1"
-                                    BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                    Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                                    BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
                                     BorderThickness="1"
-                                    CornerRadius="1"
-                                    Opacity="0.2">
+                                    CornerRadius="2"
+                                    Opacity="0.80">
 
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Border
+                                       Margin="1"
+                                       BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                       BorderThickness="1"
+                                       CornerRadius="1"
+                                       Opacity="0.2">
+
+                                       <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+
                                  </Border>
 
-                              </Border>
+                              </ControlTemplate>
+                           </Button.Template>
+                        </Button>
 
-                           </ControlTemplate>
-                        </Button.Template>
-                     </Button>
+                     </StackPanel>
 
-                  </StackPanel>
+                     <StackPanel
+                        Grid.Column="1"
+                        Margin="0,0,20,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
 
-                  <StackPanel
-                     Grid.Column="1"
-                     Margin="0,0,20,0"
-                     HorizontalAlignment="Right"
-                     Orientation="Horizontal">
+                        <!--  left,right,top,bottom  -->
+                        <Button
+                           x:Name="btnPin"
+                           Margin="0,0,2,0"
+                           Click="btnPinCycle_Click"
+                           Content="📌"
+                           Style="{StaticResource PinIconButtonStyle}"
+                           ToolTip="Pin">
 
-                     <!--  left,right,top,bottom  -->
-                     <Button
-                        x:Name="btnPin"
-                        Margin="0,0,2,0"
-                        Click="btnPinCycle_Click"
-                        Content="📌"
-                        Style="{StaticResource PinIconButtonStyle}"
-                        ToolTip="Pin">
-
-                        <Button.Template>
-                           <ControlTemplate TargetType="Button">
-
-                              <Border
-                                 Background="{TemplateBinding Background}"
-                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                 CornerRadius="2"
-                                 Opacity="0.80">
+                           <Button.Template>
+                              <ControlTemplate TargetType="Button">
 
                                  <Border
-                                    Margin="1"
-                                    BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
-                                    BorderThickness="1"
-                                    CornerRadius="1"
-                                    Opacity="0.25">
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2"
+                                    Opacity="0.80">
 
-                                    <ContentPresenter
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"
-                                       TextElement.Foreground="{TemplateBinding Foreground}" />
+                                    <Border
+                                       Margin="1"
+                                       BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                       BorderThickness="1"
+                                       CornerRadius="1"
+                                       Opacity="0.25">
+
+                                       <ContentPresenter
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}" />
+                                    </Border>
+
                                  </Border>
 
-                              </Border>
+                              </ControlTemplate>
+                           </Button.Template>
+                        </Button>
 
-                           </ControlTemplate>
-                        </Button.Template>
-                     </Button>
+                        <Button
+                           x:Name="btnMinimize"
+                           Click="btnMinimize_Click"
+                           Content="&#xE75D;"
+                           FontFamily="Segoe MDL2 Assets"
+                           Style="{StaticResource NoteIconButton}"
+                           ToolTip="Minimize">
 
-                     <Button
-                        x:Name="btnMinimize"
-                        Click="btnMinimize_Click"
-                        Content="&#xE75D;"
-                        FontFamily="Segoe MDL2 Assets"
-                        Style="{StaticResource NoteIconButton}"
-                        ToolTip="Minimize">
-
-                        <Button.Template>
-                           <ControlTemplate TargetType="Button">
-
-                              <Border
-                                 Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-                                 BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
-                                 BorderThickness="1"
-                                 CornerRadius="2"
-                                 Opacity="0.80">
+                           <Button.Template>
+                              <ControlTemplate TargetType="Button">
 
                                  <Border
-                                    Margin="1"
-                                    BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                    Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                                    BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
                                     BorderThickness="1"
-                                    CornerRadius="1"
-                                    Opacity="0.25">
+                                    CornerRadius="2"
+                                    Opacity="0.80">
 
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Border
+                                       Margin="1"
+                                       BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                       BorderThickness="1"
+                                       CornerRadius="1"
+                                       Opacity="0.25">
+
+                                       <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+
                                  </Border>
 
-                              </Border>
+                              </ControlTemplate>
+                           </Button.Template>
+                        </Button>
 
-                           </ControlTemplate>
-                        </Button.Template>
-                     </Button>
+                     </StackPanel>
+                  </Grid>
+               </Border>
 
-                  </StackPanel>
-               </Grid>
-            </Border>
+               <!--  Note Title  -->
+               <TextBox
+                  x:Name="txtNoteTitle"
+                  Grid.Row="1"
+                  Width="400"
+                  Height="25"
+                  MinWidth="400"
+                  MinHeight="25"
+                  MaxWidth="400"
+                  MaxHeight="25"
+                  HorizontalContentAlignment="Center"
+                  Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                  BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                  BorderThickness="0"
+                  FontFamily="Helvetica"
+                  FontSize="19"
+                  FontWeight="Bold"
+                  Foreground="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
+                  HorizontalScrollBarVisibility="Disabled"
+                  MaxLines="1"
+                  MouseLeftButtonDown="txtNoteTitle_select"
+                  PreviewMouseLeftButtonDown="txtNoteTitle_select"
+                  Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                  VerticalScrollBarVisibility="Disabled" />
 
-            <!--  Note Title  -->
-            <TextBox
-               x:Name="txtNoteTitle"
-               Grid.Row="1"
-               Width="400"
-               Height="25"
-               MinWidth="400"
-               MinHeight="25"
-               MaxWidth="400"
-               MaxHeight="25"
-               HorizontalContentAlignment="Center"
-               Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-               BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-               BorderThickness="0"
-               FontFamily="Helvetica"
-               FontSize="19"
-               FontWeight="Bold"
-               Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
-               HorizontalScrollBarVisibility="Disabled"
-               MaxLines="1"
-               MouseLeftButtonDown="txtNoteTitle_select"
-               PreviewMouseLeftButtonDown="txtNoteTitle_select"
-               Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
-               VerticalScrollBarVisibility="Disabled" />
-
-            <!--  Main Content Area  -->
-            <RichTextBox
-               x:Name="txtNoteContent"
-               Grid.Row="2"
-               Width="400"
-               Height="350"
-               Background="{Binding PaperBrush}"
-               BorderBrush="{Binding PaperBrush}"
-               BorderThickness="0"
-               ContextMenu="{x:Null}"
-               FontFamily="{Binding FontFamily}"
-               FontSize="{Binding FontSize}"
-               FontWeight="Normal"
-               Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
-               HorizontalScrollBarVisibility="Disabled"
-               RenderTransformOrigin="0.5,0.5"
-               VerticalScrollBarVisibility="Disabled" />
+               <!--  Main Content Area  -->
+               <RichTextBox
+                  x:Name="txtNoteContent"
+                  Grid.Row="2"
+                  Width="400"
+                  Height="350"
+                  Background="{Binding PaperBrush}"
+                  BorderBrush="{Binding PaperBrush}"
+                  BorderThickness="0"
+                  ContextMenu="{x:Null}"
+                  FontFamily="{Binding FontFamily}"
+                  FontSize="{Binding FontSize}"
+                  FontWeight="Normal"
+                  Foreground="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
+                  HorizontalScrollBarVisibility="Disabled"
+                  RenderTransformOrigin="0.5,0.5"
+                  VerticalScrollBarVisibility="Disabled" />
             </Grid>
          </Grid>
       </Border>
 
       <Border
          x:Name="StickyOverlay"
-         IsHitTestVisible="False"
          Margin="-3"
+         IsHitTestVisible="False"
          Style="{StaticResource StickyOverlayStyle}" />
    </Grid>
 </Window>

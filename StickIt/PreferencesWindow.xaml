@@ -139,6 +139,83 @@
                </StackPanel>
             </ScrollViewer>
          </TabItem>
+
+         <TabItem Header="Skins">
+            <Grid Margin="10">
+               <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="240" />
+                  <ColumnDefinition Width="12" />
+                  <ColumnDefinition Width="*" />
+               </Grid.ColumnDefinitions>
+               <Grid.RowDefinitions>
+                  <RowDefinition Height="*" />
+                  <RowDefinition Height="Auto" />
+               </Grid.RowDefinitions>
+
+               <ListBox
+                  Grid.Row="0"
+                  Grid.Column="0"
+                  DisplayMemberPath="DisplayName"
+                  ItemsSource="{Binding SkinLibrary}"
+                  SelectedItem="{Binding SelectedSkin}" />
+
+               <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,0,0" Orientation="Horizontal">
+                  <Button MinWidth="70" Margin="0,0,8,0" Click="SkinNew_Click" Content="New" />
+                  <Button MinWidth="80" Margin="0,0,8,0" Click="SkinDuplicate_Click" Content="Duplicate" />
+                  <Button MinWidth="70" Click="SkinDelete_Click" Content="Delete" />
+               </StackPanel>
+
+               <GroupBox Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Header="Skin details">
+                  <Grid Margin="10">
+                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                     </Grid.RowDefinitions>
+                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="*" />
+                     </Grid.ColumnDefinitions>
+
+                     <TextBlock Grid.Row="0" VerticalAlignment="Center" Text="Id:" />
+                     <TextBox Grid.Row="0" Grid.Column="1" IsReadOnly="True" Text="{Binding SelectedSkin.Id}" />
+
+                     <TextBlock Grid.Row="1" Margin="0,8,0,0" VerticalAlignment="Center" Text="Name:" />
+                     <TextBox Grid.Row="1" Grid.Column="1" Margin="0,8,0,0" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.Name, UpdateSourceTrigger=PropertyChanged}" />
+
+                     <TextBlock Grid.Row="2" Margin="0,8,0,0" VerticalAlignment="Center" Text="Paper hex:" />
+                     <TextBox Grid.Row="2" Grid.Column="1" Margin="0,8,0,0" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.PaperHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                     <TextBlock Grid.Row="3" Margin="0,8,0,0" VerticalAlignment="Center" Text="Control bar hex:" />
+                     <TextBox Grid.Row="3" Grid.Column="1" Margin="0,8,0,0" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.ControlBarHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                     <TextBlock Grid.Row="4" Margin="0,8,0,0" VerticalAlignment="Center" Text="Button hex:" />
+                     <TextBox Grid.Row="4" Grid.Column="1" Margin="0,8,0,0" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.ButtonHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                     <TextBlock Grid.Row="5" Margin="0,8,0,0" VerticalAlignment="Center" Text="Text hex:" />
+                     <TextBox Grid.Row="5" Grid.Column="1" Margin="0,8,0,0" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.TextHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                     <TextBlock Grid.Row="6" Margin="0,8,0,0" VerticalAlignment="Center" Text="Highlight hex:" />
+                     <TextBox Grid.Row="6" Grid.Column="1" Margin="0,8,0,0" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.HighlightHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                     <TextBlock Grid.Row="7" Margin="0,8,0,0" VerticalAlignment="Center" Text="Outline hex:" />
+                     <TextBox Grid.Row="7" Grid.Column="1" Margin="0,8,0,0" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.OutlineHex, UpdateSourceTrigger=PropertyChanged}" />
+
+                     <TextBlock Grid.Row="8" Margin="0,8,0,0" VerticalAlignment="Center" Text="Paper image:" />
+                     <StackPanel Grid.Row="8" Grid.Column="1" Margin="0,8,0,0" Orientation="Horizontal">
+                        <TextBox Width="220" IsEnabled="{Binding SelectedSkinIsEditable}" Text="{Binding SelectedSkin.PaperImagePath, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button MinWidth="60" Margin="8,0,0,0" Click="SkinBrowseImage_Click" Content="Browse" />
+                     </StackPanel>
+                  </Grid>
+               </GroupBox>
+            </Grid>
+         </TabItem>
       </TabControl>
 
       <StackPanel

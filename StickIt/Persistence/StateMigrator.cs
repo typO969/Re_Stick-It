@@ -7,7 +7,7 @@ namespace StickIt.Persistence
 	public static class StateMigrator
 	{
 		// Increment this only when you introduce a breaking or meaningfully new schema change.
-		public const int CurrentVersion = 6;
+      public const int CurrentVersion = 7;
 
 		public static StickItState MigrateToCurrent(StickItState state)
 		{
@@ -18,6 +18,7 @@ namespace StickIt.Persistence
 
 			// Always ensure list exists
 			state.Notes ??= new();
+        state.Skins ??= new();
 			state.Preferences ??= new();
 
 			// v0..v4 -> v5 normalization pass (safe even if already v5)
@@ -61,6 +62,9 @@ namespace StickIt.Persistence
 				{
 					n.ColorKey = nameof(NoteColors.NoteColor.ThreeMYellow);
 				}
+
+				if (string.IsNullOrWhiteSpace(n.SkinId))
+					n.SkinId = null;
 
 				// Font
 				if (string.IsNullOrWhiteSpace(n.FontFamily))
