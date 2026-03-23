@@ -1,6 +1,30 @@
 # Re_Stick-It
 
-Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`.
+Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, blah, blah.
+
+## So one day I was sitting in class, using an Appple and I noticed the version of 'Post-It" notes they get to use and play around with.
+## And then I looked at the (a)version that Windows has and I got super jealous! It wasn't fair that Swift programs look way more polished and dont make me feel embarrassed to use them in public.
+
+### Then the teacher got mad at me for interrupting and insanely yelling about how embarrassing the windows post-it note situation was. 
+### The professor was not impressed with my lack of arguments presented.
+### Six or eight months later I suddenly remembered that I needed to make a post-it note program for the raisins.  
+-<u>But this one would more accurately mimick the real world.</u>-
+
+### THIS meant: 
+- no resizing
+- only the colors i could find at the store
+- you can stick your notes to any surface and they will stay there for the most part (unless you have a ton of extra monitors/screens like i do (5 total!), that coding got really difficult)
+- no videos or music! how tf would you do that in real life!?!? get real!!
+- theres probably a bunch of other things I thought of and already forgot about too.
+
+### So, before you read the next section -OR- use the app, just keep in mind I was aiming high for realism.
+
+## So, then I found that f(*&ng program 'Notezilla' and saw it is anti-free and how much they they think it is worth.   
+## so I noted all their program features I liked and figrued out how to do some of it, but not really, and I give it away free.
+
+## Because, f*(& capitalism.
+
+### have fun!
 
 ## Features
 
