@@ -20,11 +20,15 @@ Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, 
 ### So, before you read the next section -OR- use the app, just keep in mind I was aiming high for realism.
 
 ## So, then I found that f(*&ng program 'Notezilla' and saw it is anti-free and how much they they think it is worth.   
-## so I noted all their program features I liked and figrued out how to do some of it, but not really, and I give it away free.
 
-## Because, f*(& capitalism.
+## I ignorantly turned and stated to a random passerby, "I can do what you do!!! You better watch out!"
 
-### have fun!
+## I startled them so profusely that they punched me to get away--strong tactic. 
+
+### i thought about what I had done and the response I got in return. I have to say, yes, I agree with that silent cheap-shotting-stranger: screw capitalism!
+
+#
+#
 
 ## Features
 
