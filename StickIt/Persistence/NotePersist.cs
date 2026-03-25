@@ -25,7 +25,6 @@ namespace StickIt.Persistence
 		public string Text { get; set; } = "";
 
 		public string ColorKey { get; set; } = nameof(NoteColors.NoteColor.ThreeMYellow);
-		public string? SkinId { get; set; }
 
 		public string FontFamily { get; set; } = "Segoe UI";
 		public double FontSize { get; set; } = 14.0;
@@ -61,7 +60,6 @@ namespace StickIt.Persistence
 		public int Version { get; set; } = StateMigrator.CurrentVersion;
 
 		public List<NotePersist> Notes { get; set; } = new();
-    public List<NoteSkinPersist> Skins { get; set; } = new();
 		public AppPreferences Preferences { get; set; } = new();
 	}
 

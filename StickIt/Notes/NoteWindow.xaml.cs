@@ -494,25 +494,7 @@ namespace StickIt
       public void SetColorKey(string keyName)
       {
          if (_note != null && Enum.TryParse(keyName, out NoteColors.NoteColor key))
-         {
             _note.ColorKey = key;
-            _note.SkinId = null;
-         }
-      }
-
-      public string? GetSkinId() => _note?.SkinId;
-
-      public void SetSkinId(string? skinId)
-      {
-         if (_note == null)
-            return;
-
-         _note.SkinId = string.IsNullOrWhiteSpace(skinId) ? null : skinId;
-      }
-
-      public void RefreshAppearanceBindings()
-      {
-         _note?.RefreshAppearanceBindings();
       }
 
       private void ColorMenuItem_Click(object sender, RoutedEventArgs e)
@@ -524,10 +506,7 @@ namespace StickIt
             return;
 
          if (menuItem.Tag is string tag && Enum.TryParse(tag, out NoteColors.NoteColor color))
-         {
             _note.ColorKey = color;
-            _note.SkinId = null;
-         }
       }
 
       private void btnClose_Click(object sender, RoutedEventArgs e)
@@ -731,33 +710,9 @@ namespace StickIt
          if (Enum.TryParse(keyName, out NoteColors.NoteColor key))
          {
             if (_note != null)
-            {
                _note.ColorKey = key;
-               _note.SkinId = null;
-            }
             AppInstance.QueueSaveFromWindow(); // we’ll add this tiny helper in App
          }
-      }
-
-      private void Menu_Skin(object sender, RoutedEventArgs e)
-      {
-         if (_note == null)
-            return;
-
-         if (sender is not MenuItem mi || mi.Tag is not string skinId)
-            return;
-
-         _note.SkinId = skinId;
-         AppInstance.QueueSaveFromWindow();
-      }
-
-      private void Menu_SkinClear(object sender, RoutedEventArgs e)
-      {
-         if (_note == null)
-            return;
-
-         _note.SkinId = null;
-         AppInstance.QueueSaveFromWindow();
       }
 
       private void Menu_Minimize(object sender, RoutedEventArgs e)
@@ -948,14 +903,13 @@ namespace StickIt
          if (_note == null) return;
 
          var current = _note.ColorKey;
-         var hasSkin = !string.IsNullOrWhiteSpace(_note.SkinId);
 
          foreach (var item in miNoteColors.Items.OfType<MenuItem>())
          {
             if (item.Tag is not string tag) continue;
             if (!Enum.TryParse(tag, out NoteColors.NoteColor key)) continue;
 
-            var isCurrent = !hasSkin && (key == current);
+            var isCurrent = (key == current);
 
             item.IsEnabled = !isCurrent;
 
@@ -963,74 +917,6 @@ namespace StickIt
             item.IsCheckable = true;
             item.IsChecked = isCurrent;
          }
-      }
-
-      private void Skins_SubmenuOpened(object sender, RoutedEventArgs e)
-      {
-         if (_note == null)
-            return;
-
-         if (sender is not MenuItem skinsMenu)
-            return;
-
-         skinsMenu.Items.Clear();
-
-         var clearItem = new MenuItem
-         {
-            Header = "Use note color",
-            IsCheckable = true,
-            IsChecked = string.IsNullOrWhiteSpace(_note.SkinId)
-         };
-         clearItem.Click += Menu_SkinClear;
-         clearItem.IsEnabled = !clearItem.IsChecked;
-         skinsMenu.Items.Add(clearItem);
-         skinsMenu.Items.Add(new Separator());
-
-         void addSkinItem(Models.NoteSkin skin)
-         {
-            var isCurrent = string.Equals(_note.SkinId, skin.Id, StringComparison.OrdinalIgnoreCase);
-            var item = new MenuItem
-            {
-               Header = skin.Name,
-               Tag = skin.Id,
-               IsCheckable = true,
-               IsChecked = isCurrent,
-               IsEnabled = !isCurrent
-            };
-
-            try
-            {
-               item.Icon = new Border
-               {
-                  Width = 12,
-                  Height = 12,
-                  CornerRadius = new CornerRadius(2),
-                  BorderThickness = new Thickness(1),
-                  BorderBrush = (System.Windows.Media.Brush) (new BrushConverter().ConvertFromString("#66000000")!),
-                  Background = (System.Windows.Media.Brush) (new BrushConverter().ConvertFromString(skin.PaperHex)!)
-               };
-            }
-            catch
-            {
-               // ignore malformed skin icon colors
-            }
-
-            item.Click += Menu_Skin;
-            skinsMenu.Items.Add(item);
-         }
-
-         var customSkins = AppInstance.Skins.GetUserSkins();
-         if (customSkins.Count > 0)
-         {
-            foreach (var skin in customSkins)
-               addSkinItem(skin);
-
-            skinsMenu.Items.Add(new Separator());
-         }
-
-         var builtInSkins = AppInstance.Skins.GetBuiltInSkins();
-         foreach (var skin in builtInSkins)
-            addSkinItem(skin);
       }
 
       private void Menu_StickToWindow_Picker(object sender, RoutedEventArgs e)

@@ -25,7 +25,6 @@ namespace StickIt.Models
 		public string FontFamily { get; set; } = "Segoe UI";
 		public double FontSize { get; set; } = 14.0;
 		public NoteColors.NoteColor ColorKey { get; set; } = NoteColors.NoteColor.ThreeMYellow;
-      public string? SkinId { get; set; }
 		public FontWeight FontWeight { get; set; }
 		public System.Windows.FontStyle FontStyle { get; set; }
 

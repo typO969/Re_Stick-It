@@ -5,7 +5,6 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
 
-using StickIt.Models;
 using StickIt.Persistence;
 using StickIt.Services;
 using StickIt.Sticky.Services;
@@ -40,7 +39,6 @@ namespace StickIt
       private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
 
 		public AppPreferences Preferences => _state.Preferences;
-     public SkinService Skins { get; } = new();
 		public bool IsShuttingDown => _isShuttingDown;
 
 		protected override void OnStartup(StartupEventArgs e)
@@ -67,7 +65,6 @@ namespace StickIt
 			SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
 			_state = JsonStore.LoadOrDefault();
-       Skins.SetUserSkins(_state.Skins);
 			ApplyPreferences(_state.Preferences, persist: false);
 
 			if (_state.Notes.Count == 0)
@@ -480,31 +477,6 @@ namespace StickIt
 			return _windows.Where(w => w.IsLoaded).ToList();
 		}
 
-		public IReadOnlyList<NoteSkin> GetBuiltInSkinsSnapshot()
-		{
-			return Skins.GetBuiltInSkins();
-		}
-
-		public IReadOnlyList<NoteSkin> GetUserSkinsSnapshot()
-		{
-			return Skins.GetUserSkins();
-		}
-
-		public void SaveUserSkins(IEnumerable<NoteSkinPersist> skins)
-		{
-			_state.Skins = skins?
-				.Where(s => s != null && !string.IsNullOrWhiteSpace(s.Id))
-				.Select(s => s)
-				.ToList() ?? new List<NoteSkinPersist>();
-
-			Skins.SetUserSkins(_state.Skins);
-
-			foreach (var w in _windows.Where(w => w.IsLoaded))
-				w.RefreshAppearanceBindings();
-
-			JsonStore.Save(_state);
-		}
-
 
 
 		private void SpawnWindow(NotePersist note)
@@ -523,8 +495,6 @@ namespace StickIt
 				model.ColorKey = ck;
 			else
 				model.ColorKey = NoteColors.NoteColor.ThreeMYellow;
-
-			model.SkinId = note.SkinId;
 
 			model.FontFamily = note.FontFamily;
 			model.FontSize = note.FontSize;

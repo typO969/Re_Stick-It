@@ -25,9 +25,9 @@
          <Setter Property="Padding" Value="0" />
          <Setter Property="BorderThickness" Value="0" />
          <Setter Property="FontSize" Value="8" />
-         <Setter Property="Background" Value="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}" />
-         <Setter Property="BorderBrush" Value="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}" />
-         <Setter Property="Foreground" Value="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}" />
+         <Setter Property="Background" Value="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}" />
+         <Setter Property="BorderBrush" Value="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}" />
+         <Setter Property="Foreground" Value="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}" />
          <Setter Property="Template">
             <Setter.Value>
                <ControlTemplate TargetType="Button">
@@ -171,7 +171,7 @@
          x:Name="NoteChrome"
          Padding="0"
          Background="{Binding PaperBrush}"
-         BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
+         BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
          BorderThickness="1"
          CornerRadius="1"
          Style="{StaticResource NoteChromeStyle}">
@@ -380,15 +380,6 @@
                   </MenuItem>
                </MenuItem>
 
-               <MenuItem
-                  x:Name="miSkins"
-                  Header="Skins"
-                  SubmenuOpened="Skins_SubmenuOpened">
-                  <MenuItem Header="Loading..." IsEnabled="False" />
-               </MenuItem>
-
-               <Separator />
-
                <!--  Them there stickin modes, look out, y'all!  -->
                <MenuItem
                   x:Name="miStickyRoot"
@@ -511,7 +502,7 @@
                   Grid.Row="0"
                   HorizontalAlignment="Stretch"
                   VerticalAlignment="Stretch"
-                  Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=ControlBar}">
+                  Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=ControlBar}">
 
                   <Grid>
                      <Grid.ColumnDefinitions>
@@ -533,15 +524,15 @@
                               <ControlTemplate TargetType="Button">
 
                                  <Border
-                                    Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-                                    BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
+                                    Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                                    BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
                                     BorderThickness="1"
                                     CornerRadius="2"
                                     Opacity="0.80">
 
                                     <Border
                                        Margin="1"
-                                       BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                       BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
                                        BorderThickness="1"
                                        CornerRadius="1"
                                        Opacity="0.2">
@@ -584,7 +575,7 @@
 
                                     <Border
                                        Margin="1"
-                                       BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                       BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
                                        BorderThickness="1"
                                        CornerRadius="1"
                                        Opacity="0.25">
@@ -613,15 +604,15 @@
                               <ControlTemplate TargetType="Button">
 
                                  <Border
-                                    Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-                                    BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
+                                    Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                                    BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
                                     BorderThickness="1"
                                     CornerRadius="2"
                                     Opacity="0.80">
 
                                     <Border
                                        Margin="1"
-                                       BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
+                                       BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
                                        BorderThickness="1"
                                        CornerRadius="1"
                                        Opacity="0.25">
@@ -650,13 +641,13 @@
                   MaxWidth="400"
                   MaxHeight="25"
                   HorizontalContentAlignment="Center"
-                  Background="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
-                  BorderBrush="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                  Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
+                  BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
                   BorderThickness="0"
                   FontFamily="Helvetica"
                   FontSize="19"
                   FontWeight="Bold"
-                  Foreground="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
+                  Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
                   HorizontalScrollBarVisibility="Disabled"
                   MaxLines="1"
                   MouseLeftButtonDown="txtNoteTitle_select"
@@ -677,7 +668,7 @@
                   FontFamily="{Binding FontFamily}"
                   FontSize="{Binding FontSize}"
                   FontWeight="Normal"
-                  Foreground="{Binding ., Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
+                  Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
                   HorizontalScrollBarVisibility="Disabled"
                   RenderTransformOrigin="0.5,0.5"
                   VerticalScrollBarVisibility="Disabled" />

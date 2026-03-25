@@ -25,8 +25,6 @@ namespace StickIt.Persistence
 			else
 				m.ColorKey = NoteColors.NoteColor.ThreeMYellow;
 
-			m.SkinId = p.SkinId;
-
 			m.FontFamily = p.FontFamily;
 			m.FontSize = p.FontSize;
 
@@ -55,7 +53,6 @@ namespace StickIt.Persistence
 				Text = w.GetText(),
 
 				ColorKey = w.GetColorKey().ToString(),
-				SkinId = w.GetSkinId(),
 
 				FontFamily = w.GetFontFamily(),
 				FontSize = w.GetFontSize(),

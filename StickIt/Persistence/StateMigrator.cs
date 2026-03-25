@@ -18,7 +18,6 @@ namespace StickIt.Persistence
 
 			// Always ensure list exists
 			state.Notes ??= new();
-        state.Skins ??= new();
 			state.Preferences ??= new();
 
 			// v0..v4 -> v5 normalization pass (safe even if already v5)
@@ -62,9 +61,6 @@ namespace StickIt.Persistence
 				{
 					n.ColorKey = nameof(NoteColors.NoteColor.ThreeMYellow);
 				}
-
-				if (string.IsNullOrWhiteSpace(n.SkinId))
-					n.SkinId = null;
 
 				// Font
 				if (string.IsNullOrWhiteSpace(n.FontFamily))

@@ -5,11 +5,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
-using Microsoft.Win32;
 
-using StickIt.Models;
 using StickIt.Persistence;
-using StickIt.Services;
 
 namespace StickIt
 {
@@ -21,7 +18,6 @@ namespace StickIt
 		{
 			InitializeComponent();
 			_viewModel = PreferencesViewModel.FromPreferences(preferences);
-        _viewModel.LoadSkins(AppInstance.GetBuiltInSkinsSnapshot(), AppInstance.GetUserSkinsSnapshot());
 			DataContext = _viewModel;
 		}
 
@@ -56,139 +52,6 @@ namespace StickIt
 		{
 			var updated = _viewModel.ToPreferences();
 			AppInstance.ApplyPreferences(updated, persist: true);
-        AppInstance.SaveUserSkins(_viewModel.GetUserSkinPersists());
-		}
-
-		private void SkinNew_Click(object sender, RoutedEventArgs e)
-		{
-			_viewModel.AddNewSkin();
-		}
-
-		private void SkinDuplicate_Click(object sender, RoutedEventArgs e)
-		{
-			_viewModel.DuplicateSelectedSkin();
-		}
-
-		private void SkinDelete_Click(object sender, RoutedEventArgs e)
-		{
-			_viewModel.DeleteSelectedSkin();
-		}
-
-		private void SkinBrowseImage_Click(object sender, RoutedEventArgs e)
-		{
-       if (_viewModel.SelectedSkin is null)
-				return;
-
-			if (!_viewModel.SelectedSkinIsEditable)
-				_viewModel.DuplicateSelectedSkin();
-
-			if (_viewModel.SelectedSkin is null || !_viewModel.SelectedSkinIsEditable)
-				return;
-
-        var dlg = new Microsoft.Win32.OpenFileDialog
-			{
-				Title = "Select paper background image",
-				Filter = "Image files|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|All files|*.*",
-				CheckFileExists = true,
-				Multiselect = false
-			};
-
-			if (dlg.ShowDialog(this) != true)
-				return;
-
-			_viewModel.SelectedSkin.PaperImagePath = dlg.FileName;
-		}
-	}
-
-	public sealed class EditableSkinViewModel : INotifyPropertyChanged
-	{
-		public string DisplayName => IsBuiltIn ? $"{Name} (built-in)" : Name;
-
-		public string Id { get => _id; set { if (SetField(ref _id, value)) OnPropertyChanged(nameof(DisplayName)); } }
-		public string Name { get => _name; set { if (SetField(ref _name, value)) OnPropertyChanged(nameof(DisplayName)); } }
-		public string PaperHex { get => _paperHex; set => SetField(ref _paperHex, value); }
-		public string ControlBarHex { get => _controlBarHex; set => SetField(ref _controlBarHex, value); }
-		public string ButtonHex { get => _buttonHex; set => SetField(ref _buttonHex, value); }
-		public string TextHex { get => _textHex; set => SetField(ref _textHex, value); }
-		public string? HighlightHex { get => _highlightHex; set => SetField(ref _highlightHex, value); }
-		public string? OutlineHex { get => _outlineHex; set => SetField(ref _outlineHex, value); }
-      public string? PaperImagePath { get => _paperImagePath; set => SetField(ref _paperImagePath, value); }
-		public bool IsBuiltIn { get => _isBuiltIn; set { if (SetField(ref _isBuiltIn, value)) OnPropertyChanged(nameof(DisplayName)); } }
-
-		private string _id = string.Empty;
-		private string _name = string.Empty;
-		private string _paperHex = "#F7E03D";
-		private string _controlBarHex = "#EAC52C";
-		private string _buttonHex = "#C59A00";
-		private string _textHex = "#1C1C1C";
-		private string? _highlightHex;
-		private string? _outlineHex;
-      private string? _paperImagePath;
-		private bool _isBuiltIn;
-
-		public event PropertyChangedEventHandler? PropertyChanged;
-
-		public static EditableSkinViewModel FromSkin(NoteSkin skin, bool isBuiltIn)
-		{
-			return new EditableSkinViewModel
-			{
-				Id = skin.Id,
-				Name = skin.Name,
-				PaperHex = skin.PaperHex,
-				ControlBarHex = skin.ControlBarHex,
-				ButtonHex = skin.ButtonHex,
-				TextHex = skin.TextHex,
-				HighlightHex = skin.HighlightHex,
-				OutlineHex = skin.OutlineHex,
-            PaperImagePath = skin.PaperImagePath,
-				IsBuiltIn = isBuiltIn
-			};
-		}
-
-		public EditableSkinViewModel CloneAsCustom()
-		{
-			return new EditableSkinViewModel
-			{
-				Id = $"custom-{Guid.NewGuid():N}"[..15],
-				Name = string.IsNullOrWhiteSpace(Name) ? "Custom skin" : $"{Name} copy",
-				PaperHex = PaperHex,
-				ControlBarHex = ControlBarHex,
-				ButtonHex = ButtonHex,
-				TextHex = TextHex,
-				HighlightHex = HighlightHex,
-				OutlineHex = OutlineHex,
-          PaperImagePath = PaperImagePath,
-				IsBuiltIn = false
-			};
-		}
-
-		public NoteSkin ToSkin()
-		{
-			return new NoteSkin
-			{
-				Id = Id,
-				Name = string.IsNullOrWhiteSpace(Name) ? Id : Name,
-				PaperHex = PaperHex,
-				ControlBarHex = ControlBarHex,
-				ButtonHex = ButtonHex,
-				TextHex = TextHex,
-				HighlightHex = string.IsNullOrWhiteSpace(HighlightHex) ? null : HighlightHex,
-           OutlineHex = string.IsNullOrWhiteSpace(OutlineHex) ? null : OutlineHex,
-				PaperImagePath = string.IsNullOrWhiteSpace(PaperImagePath) ? null : PaperImagePath
-			};
-		}
-
-		private void OnPropertyChanged([CallerMemberName] string? name = null) =>
-			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-		private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
-		{
-			if (Equals(field, value))
-				return false;
-
-			field = value;
-			OnPropertyChanged(name);
-			return true;
 		}
 	}
 
@@ -224,19 +87,6 @@ namespace StickIt
 
 		public string DesktopAreaSummary { get => _desktopAreaSummary; private set => SetField(ref _desktopAreaSummary, value); }
 
-		public ObservableCollection<EditableSkinViewModel> SkinLibrary { get; } = new();
-		public EditableSkinViewModel? SelectedSkin
-		{
-			get => _selectedSkin;
-			set
-			{
-				if (SetField(ref _selectedSkin, value))
-					OnPropertyChanged(nameof(SelectedSkinIsEditable));
-			}
-		}
-
-		public bool SelectedSkinIsEditable => SelectedSkin is { IsBuiltIn: false };
-
 		private bool _runOnStartup;
 		private bool _darkMode;
 		private bool _showTaskbarIcon = true;
@@ -259,7 +109,6 @@ namespace StickIt
 		private double? _desktopAreaWidth;
 		private double? _desktopAreaHeight;
 		private string _desktopAreaSummary = "Not set";
-		private EditableSkinViewModel? _selectedSkin;
 
 		public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -339,83 +188,19 @@ namespace StickIt
 			DesktopAreaSummary = $"Left {DesktopAreaLeft:0}, Top {DesktopAreaTop:0}, {DesktopAreaWidth:0} x {DesktopAreaHeight:0}";
 		}
 
-		public void LoadSkins(IEnumerable<NoteSkin> builtInSkins, IEnumerable<NoteSkin> userSkins)
-		{
-			SkinLibrary.Clear();
-
-			foreach (var builtIn in builtInSkins.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
-				SkinLibrary.Add(EditableSkinViewModel.FromSkin(builtIn, isBuiltIn: true));
-
-			foreach (var custom in userSkins.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
-				SkinLibrary.Add(EditableSkinViewModel.FromSkin(custom, isBuiltIn: false));
-
-			SelectedSkin = SkinLibrary.FirstOrDefault();
-		}
-
-		public void AddNewSkin()
-		{
-			var index = SkinLibrary.Count(s => !s.IsBuiltIn) + 1;
-			var skin = new EditableSkinViewModel
-			{
-				Id = $"custom-{Guid.NewGuid():N}"[..15],
-				Name = $"Custom {index}",
-				PaperHex = "#F7E03D",
-				ControlBarHex = "#EAC52C",
-				ButtonHex = "#C59A00",
-				TextHex = "#1C1C1C",
-				HighlightHex = "#FFE86A",
-				OutlineHex = "#9A7700",
-          PaperImagePath = null,
-				IsBuiltIn = false
-			};
-
-			SkinLibrary.Add(skin);
-			SelectedSkin = skin;
-		}
-
-		public void DuplicateSelectedSkin()
-		{
-			if (SelectedSkin == null)
-				return;
-
-			var skin = SelectedSkin.CloneAsCustom();
-			SkinLibrary.Add(skin);
-			SelectedSkin = skin;
-		}
-
-		public void DeleteSelectedSkin()
-		{
-			if (SelectedSkin == null || SelectedSkin.IsBuiltIn)
-				return;
-
-			var idx = SkinLibrary.IndexOf(SelectedSkin);
-			SkinLibrary.Remove(SelectedSkin);
-			SelectedSkin = idx >= 0 && idx < SkinLibrary.Count ? SkinLibrary[idx] : SkinLibrary.FirstOrDefault();
-		}
-
-		public IReadOnlyList<NoteSkinPersist> GetUserSkinPersists()
-		{
-			return SkinLibrary
-				.Where(s => !s.IsBuiltIn)
-				.Select(s => SkinService.ToPersist(s.ToSkin()))
-				.ToList();
-		}
-
 		private void OnPropertyChanged([CallerMemberName] string? name = null) =>
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
+		private void SetField<T>(ref T field, T value, [CallerMemberName] string? name = null)
 		{
 			if (Equals(field, value))
-           return false;
+				return;
 
 			field = value;
 			OnPropertyChanged(name);
 
 			if (name == nameof(DesktopAreaLeft) || name == nameof(DesktopAreaTop) || name == nameof(DesktopAreaWidth) || name == nameof(DesktopAreaHeight))
 				RefreshDesktopAreaSummary();
-
-			return true;
 		}
 	}
 }
