@@ -77,8 +77,8 @@
       </Style>
       <Style x:Key="NoteChromeStyle" TargetType="Border">
          <!--  Mode 0 defaults  -->
-         <Setter Property="BorderThickness" Value="3" />
-         <Setter Property="BorderBrush" Value="#55000000" />
+         <Setter Property="BorderThickness" Value="2" />
+         <Setter Property="BorderBrush" Value="#44000000" />
          <Setter Property="Effect">
             <Setter.Value>
                <DropShadowEffect
@@ -431,6 +431,21 @@
                      IsCheckable="True" />
                </MenuItem>
 
+               <MenuItem Header="Ink">
+                  <MenuItem
+                     x:Name="miInkMode"
+                     Click="Menu_InkMode"
+                     Header="Ink mode"
+                     IsCheckable="True" />
+                  <MenuItem
+                     x:Name="miInkEraseMode"
+                     Click="Menu_InkEraseMode"
+                     Header="Ink erase mode"
+                     IsCheckable="True" />
+                  <Separator />
+                  <MenuItem Click="Menu_ClearInk" Header="Clear ink" />
+               </MenuItem>
+
 
                <Separator />
 
@@ -524,6 +539,7 @@
                               <ControlTemplate TargetType="Button">
 
                                  <Border
+                                    x:Name="CloseButtonOuterBorder"
                                     Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
                                     BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
                                     BorderThickness="1"
@@ -531,6 +547,7 @@
                                     Opacity="0.80">
 
                                     <Border
+                                       x:Name="CloseButtonInnerBorder"
                                        Margin="1"
                                        BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
                                        BorderThickness="1"
@@ -541,6 +558,16 @@
                                     </Border>
 
                                  </Border>
+
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="CloseButtonOuterBorder" Property="Opacity" Value="1" />
+                                        <Setter TargetName="CloseButtonInnerBorder" Property="Opacity" Value="0.45" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="CloseButtonOuterBorder" Property="Opacity" Value="0.70" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
 
                               </ControlTemplate>
                            </Button.Template>
@@ -567,6 +594,7 @@
                               <ControlTemplate TargetType="Button">
 
                                  <Border
+                                    x:Name="PinButtonOuterBorder"
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
@@ -574,6 +602,7 @@
                                     Opacity="0.80">
 
                                     <Border
+                                       x:Name="PinButtonInnerBorder"
                                        Margin="1"
                                        BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
                                        BorderThickness="1"
@@ -587,6 +616,16 @@
                                     </Border>
 
                                  </Border>
+
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="PinButtonOuterBorder" Property="Opacity" Value="1" />
+                                        <Setter TargetName="PinButtonInnerBorder" Property="Opacity" Value="0.50" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="PinButtonOuterBorder" Property="Opacity" Value="0.70" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
 
                               </ControlTemplate>
                            </Button.Template>
@@ -604,6 +643,7 @@
                               <ControlTemplate TargetType="Button">
 
                                  <Border
+                                    x:Name="MinimizeButtonOuterBorder"
                                     Background="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Background}"
                                     BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Buttons}"
                                     BorderThickness="1"
@@ -611,6 +651,7 @@
                                     Opacity="0.80">
 
                                     <Border
+                                       x:Name="MinimizeButtonInnerBorder"
                                        Margin="1"
                                        BorderBrush="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Highlights}"
                                        BorderThickness="1"
@@ -621,6 +662,16 @@
                                     </Border>
 
                                  </Border>
+
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="MinimizeButtonOuterBorder" Property="Opacity" Value="1" />
+                                        <Setter TargetName="MinimizeButtonInnerBorder" Property="Opacity" Value="0.50" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="MinimizeButtonOuterBorder" Property="Opacity" Value="0.70" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
 
                               </ControlTemplate>
                            </Button.Template>
@@ -656,22 +707,32 @@
                   VerticalScrollBarVisibility="Disabled" />
 
                <!--  Main Content Area  -->
-               <RichTextBox
-                  x:Name="txtNoteContent"
-                  Grid.Row="2"
-                  Width="400"
-                  Height="350"
-                  Background="{Binding PaperBrush}"
-                  BorderBrush="{Binding PaperBrush}"
-                  BorderThickness="0"
-                  ContextMenu="{x:Null}"
-                  FontFamily="{Binding FontFamily}"
-                  FontSize="{Binding FontSize}"
-                  FontWeight="Normal"
-                  Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
-                  HorizontalScrollBarVisibility="Disabled"
-                  RenderTransformOrigin="0.5,0.5"
-                  VerticalScrollBarVisibility="Disabled" />
+               <Grid Grid.Row="2">
+                  <RichTextBox
+                     x:Name="txtNoteContent"
+                     Width="400"
+                     Height="350"
+                     Background="{Binding PaperBrush}"
+                     BorderBrush="{Binding PaperBrush}"
+                     BorderThickness="0"
+                     ContextMenu="{x:Null}"
+                     FontFamily="{Binding FontFamily}"
+                     FontSize="{Binding FontSize}"
+                     FontWeight="Normal"
+                     Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
+                     HorizontalScrollBarVisibility="Disabled"
+                     RenderTransformOrigin="0.5,0.5"
+                     VerticalScrollBarVisibility="Disabled" />
+
+                  <InkCanvas
+                     x:Name="inkLayer"
+                     Width="400"
+                     Height="350"
+                     Background="Transparent"
+                     EditingMode="Ink"
+                     IsHitTestVisible="False"
+                     UseCustomCursor="True" />
+               </Grid>
             </Grid>
          </Grid>
       </Border>

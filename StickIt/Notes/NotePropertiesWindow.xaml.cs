@@ -10,6 +10,7 @@ namespace StickIt
       public NotePropertiesWindow(NoteWindow noteWindow)
       {
          InitializeComponent();
+       AppThemeService.ApplyDialogTheme(this);
          DataContext = NotePropertiesViewModel.FromNoteWindow(noteWindow);
       }
 

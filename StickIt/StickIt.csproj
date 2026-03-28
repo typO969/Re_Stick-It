@@ -16,6 +16,9 @@
     <None Remove="stickit_prefsIdeas.pdf" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Properties\Fonts\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Properties\Icons\re_stickit.ico" />
     <Content Include="Properties\Icons\stickIt_Main.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

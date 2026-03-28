@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Media;
 
 using StickIt.Persistence;
+using StickIt.Services;
 
 namespace StickIt
 {
@@ -17,6 +18,7 @@ namespace StickIt
 		public PreferencesWindow(AppPreferences preferences)
 		{
 			InitializeComponent();
+         AppThemeService.ApplyDialogTheme(this);
 			_viewModel = PreferencesViewModel.FromPreferences(preferences);
 			DataContext = _viewModel;
 		}
@@ -75,10 +77,12 @@ namespace StickIt
 
 		public System.Windows.Media.FontFamily TitleFontFamily { get => _titleFontFamily; set => SetField(ref _titleFontFamily, value); }
 		public double TitleFontSize { get => _titleFontSize; set => SetField(ref _titleFontSize, value); }
+      public bool TitleFontBold { get => _titleFontBold; set => SetField(ref _titleFontBold, value); }
 		public System.Windows.Media.FontFamily BodyFontFamily { get => _bodyFontFamily; set => SetField(ref _bodyFontFamily, value); }
 		public double BodyFontSize { get => _bodyFontSize; set => SetField(ref _bodyFontSize, value); }
 		public bool ShowDateAlongTitle { get => _showDateAlongTitle; set => SetField(ref _showDateAlongTitle, value); }
 		public bool EnableDropShadow { get => _enableDropShadow; set => SetField(ref _enableDropShadow, value); }
+		public bool EnableNoteBorders { get => _enableNoteBorders; set => SetField(ref _enableNoteBorders, value); }
 
 		public double? DesktopAreaLeft { get => _desktopAreaLeft; set => SetField(ref _desktopAreaLeft, value); }
 		public double? DesktopAreaTop { get => _desktopAreaTop; set => SetField(ref _desktopAreaTop, value); }
@@ -100,10 +104,12 @@ namespace StickIt
 		private bool _separateNotesPerDesktopArea;
 		private System.Windows.Media.FontFamily _titleFontFamily = new("Helvetica");
 		private double _titleFontSize = 19.0;
+    private bool _titleFontBold = true;
 		private System.Windows.Media.FontFamily _bodyFontFamily = new("Segoe UI");
 		private double _bodyFontSize = 14.0;
 		private bool _showDateAlongTitle;
 		private bool _enableDropShadow = true;
+      private bool _enableNoteBorders = true;
 		private double? _desktopAreaLeft;
 		private double? _desktopAreaTop;
 		private double? _desktopAreaWidth;
@@ -135,10 +141,12 @@ namespace StickIt
 				SeparateNotesPerDesktopArea = prefs.SeparateNotesPerDesktopArea,
 				TitleFontFamily = new System.Windows.Media.FontFamily(prefs.TitleFontFamily),
 				TitleFontSize = prefs.TitleFontSize,
+            TitleFontBold = prefs.TitleFontBold,
 				BodyFontFamily = new System.Windows.Media.FontFamily(prefs.BodyFontFamily),
 				BodyFontSize = prefs.BodyFontSize,
 				ShowDateAlongTitle = prefs.ShowDateAlongTitle,
 				EnableDropShadow = prefs.EnableDropShadow,
+           EnableNoteBorders = prefs.EnableNoteBorders,
 				DesktopAreaLeft = prefs.DesktopAreaLeft,
 				DesktopAreaTop = prefs.DesktopAreaTop,
 				DesktopAreaWidth = prefs.DesktopAreaWidth,
@@ -166,10 +174,12 @@ namespace StickIt
 				SeparateNotesPerDesktopArea = SeparateNotesPerDesktopArea,
 				TitleFontFamily = TitleFontFamily.Source,
 				TitleFontSize = TitleFontSize,
+            TitleFontBold = TitleFontBold,
 				BodyFontFamily = BodyFontFamily.Source,
 				BodyFontSize = BodyFontSize,
 				ShowDateAlongTitle = ShowDateAlongTitle,
 				EnableDropShadow = EnableDropShadow,
+           EnableNoteBorders = EnableNoteBorders,
 				DesktopAreaLeft = DesktopAreaLeft,
 				DesktopAreaTop = DesktopAreaTop,
 				DesktopAreaWidth = DesktopAreaWidth,

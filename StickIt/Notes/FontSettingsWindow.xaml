@@ -33,6 +33,7 @@
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
                   <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
                </Grid.RowDefinitions>
                <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="120" />
@@ -57,13 +58,21 @@
                   ItemsSource="{Binding FontSizes}"
                   SelectedItem="{Binding FontSize}" />
 
+                <CheckBox
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Grid.ColumnSpan="2"
+                    Margin="0,8,0,0"
+                    Content="Handwritten note look (bundled fonts)"
+                    IsChecked="{Binding HandwrittenNoteLook}" />
+
                <TextBlock
-                  Grid.Row="1"
+                  Grid.Row="2"
                   Margin="0,8,0,0"
                   VerticalAlignment="Center"
                   Text="Style:" />
                <StackPanel
-                  Grid.Row="1"
+                  Grid.Row="2"
                   Grid.Column="1"
                   Grid.ColumnSpan="2"
                   Margin="0,8,0,0"
@@ -80,12 +89,12 @@
                </StackPanel>
 
                <TextBlock
-                  Grid.Row="2"
+                  Grid.Row="3"
                   Margin="0,8,0,0"
                   VerticalAlignment="Center"
                   Text="Color:" />
                <ComboBox
-                  Grid.Row="2"
+                  Grid.Row="3"
                   Grid.Column="1"
                   Grid.ColumnSpan="2"
                   Margin="0,8,0,0"
@@ -110,13 +119,15 @@
          </GroupBox>
 
          <GroupBox
-            Height="93"
+            Height="130"
             Margin="0,0,0,10"
             Header="Apply">
             <StackPanel Margin="10">
                <RadioButton Content="Apply to selection" IsChecked="{Binding ApplyToSelection}" />
                <RadioButton Content="Apply to entire note" IsChecked="{Binding ApplyToEntireNote}" />
                <RadioButton Content="Set as defaults for this note" IsChecked="{Binding ApplyToDefaults}" />
+               <CheckBox Margin="0,8,0,0" Content="Set as default for all new notes" IsChecked="{Binding SetAsDefaultForNewNotes}" />
+                <CheckBox Content="Apply font changes to all open notes" IsChecked="{Binding ApplyToAllOpenNotes}" />
             </StackPanel>
          </GroupBox>
 

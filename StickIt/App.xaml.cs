@@ -477,6 +477,21 @@ namespace StickIt
 			return _windows.Where(w => w.IsLoaded).ToList();
 		}
 
+		public void UpdateDefaultBodyFont(string fontFamily, double fontSize)
+		{
+			_state.Preferences.BodyFontFamily = string.IsNullOrWhiteSpace(fontFamily) ? _state.Preferences.BodyFontFamily : fontFamily;
+			_state.Preferences.BodyFontSize = fontSize > 0 ? fontSize : _state.Preferences.BodyFontSize;
+			JsonStore.Save(_state);
+		}
+
+		public void ApplyFontSettingsToAllOpenNotes(FontSettingsData settings, NoteWindow? excludeWindow = null)
+		{
+			foreach (var window in _windows.Where(w => w.IsLoaded && !ReferenceEquals(w, excludeWindow)))
+				window.ApplyFontSettingsToEntireNote(settings);
+
+			QueueSave(700);
+		}
+
 
 
 		private void SpawnWindow(NotePersist note)
@@ -519,6 +534,7 @@ namespace StickIt
 
 			// Content (prefer RTF)
 			w.SetRtf(note.Rtf ?? RtfCodec.FromPlainText(note.Text, note.FontSize));
+			w.SetInkIsfBase64(note.InkIsfBase64);
 
 			// Sticky + minimized
 			w.SetStuckMode(note.StuckMode);
@@ -592,25 +608,30 @@ namespace StickIt
 		private static void ClampToWorkingArea(NoteWindow w, System.Windows.Forms.Screen screen)
 		{
 			var wa = screen.WorkingArea;
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(w);
+			double waLeft = wa.Left / Math.Max(0.01, dpi.DpiScaleX);
+			double waTop = wa.Top / Math.Max(0.01, dpi.DpiScaleY);
+			double waWidth = wa.Width / Math.Max(0.01, dpi.DpiScaleX);
+			double waHeight = wa.Height / Math.Max(0.01, dpi.DpiScaleY);
 			const double margin = 20;
 
-			double right = wa.Left + wa.Width;
-			double bottom = wa.Top + wa.Height;
+        double right = waLeft + waWidth;
+			double bottom = waTop + waHeight;
 
 			if (w.Left + w.Width > right - margin)
 				w.Left = right - w.Width - margin;
 			if (w.Top + w.Height > bottom - margin)
 				w.Top = bottom - w.Height - margin;
 
-			if (w.Left < wa.Left + margin)
-				w.Left = wa.Left + margin;
-			if (w.Top < wa.Top + margin)
-				w.Top = wa.Top + margin;
+         if (w.Left < waLeft + margin)
+				w.Left = waLeft + margin;
+			if (w.Top < waTop + margin)
+				w.Top = waTop + margin;
 
-			if (w.Width > wa.Width - (margin * 2))
-				w.Left = wa.Left + margin;
-			if (w.Height > wa.Height - (margin * 2))
-				w.Top = wa.Top + margin;
+       if (w.Width > waWidth - (margin * 2))
+				w.Left = waLeft + margin;
+			if (w.Height > waHeight - (margin * 2))
+				w.Top = waTop + margin;
 		}
 
 		private bool ClampToPreferredArea(NoteWindow w)
@@ -677,21 +698,43 @@ namespace StickIt
 			if (screen == null)
 				return false;
 
+			var sameMonitor = !string.IsNullOrWhiteSpace(note.MonitorDeviceName)
+				&& string.Equals(note.MonitorDeviceName, screen.DeviceName, StringComparison.OrdinalIgnoreCase);
+
+			if (sameMonitor)
+			{
+				w.Left = note.Left;
+				w.Top = note.Top;
+				ClampToWorkingArea(w, screen);
+				return true;
+			}
+
 			if (note.MonitorWorkAreaWidth is null || note.MonitorWorkAreaHeight is null ||
 				note.MonitorWorkAreaLeft is null || note.MonitorWorkAreaTop is null)
 				return false;
 
-			double oldW = Math.Max(1.0, note.MonitorWorkAreaWidth.Value);
-			double oldH = Math.Max(1.0, note.MonitorWorkAreaHeight.Value);
-			double rx = (note.Left - note.MonitorWorkAreaLeft.Value) / oldW;
-			double ry = (note.Top - note.MonitorWorkAreaTop.Value) / oldH;
+         var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(w);
+			double scaleX = Math.Max(0.01, dpi.DpiScaleX);
+			double scaleY = Math.Max(0.01, dpi.DpiScaleY);
+
+			double oldLeft = note.MonitorWorkAreaLeft.Value / scaleX;
+			double oldTop = note.MonitorWorkAreaTop.Value / scaleY;
+			double oldW = Math.Max(1.0, note.MonitorWorkAreaWidth.Value / scaleX);
+			double oldH = Math.Max(1.0, note.MonitorWorkAreaHeight.Value / scaleY);
+			double rx = (note.Left - oldLeft) / oldW;
+			double ry = (note.Top - oldTop) / oldH;
 
 			rx = Math.Max(0.0, Math.Min(1.0, rx));
 			ry = Math.Max(0.0, Math.Min(1.0, ry));
 
 			var wa = screen.WorkingArea;
-			w.Left = wa.Left + (rx * Math.Max(1, wa.Width - w.Width));
-			w.Top = wa.Top + (ry * Math.Max(1, wa.Height - w.Height));
+        double waLeft = wa.Left / scaleX;
+			double waTop = wa.Top / scaleY;
+			double waWidth = wa.Width / scaleX;
+			double waHeight = wa.Height / scaleY;
+
+			w.Left = waLeft + (rx * Math.Max(1, waWidth - w.Width));
+			w.Top = waTop + (ry * Math.Max(1, waHeight - w.Height));
 
 			ClampToWorkingArea(w, screen);
 			return true;

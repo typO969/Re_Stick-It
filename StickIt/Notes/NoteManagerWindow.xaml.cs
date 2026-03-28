@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
+using StickIt.Services;
 
 namespace StickIt
 {
@@ -12,6 +13,7 @@ namespace StickIt
       public NoteManagerWindow()
       {
          InitializeComponent();
+         AppThemeService.ApplyDialogTheme(this);
          NotesGrid.ItemsSource = _items;
          Loaded += (_, __) => RefreshItems();
          Activated += (_, __) => RefreshItems();

@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
+using StickIt.Services;
 
 namespace StickIt
 {
@@ -17,6 +20,7 @@ namespace StickIt
 		public FontSettingsWindow(FontSettingsData initial)
 		{
 			InitializeComponent();
+       AppThemeService.ApplyDialogTheme(this);
 			_viewModel = FontSettingsViewModel.FromSettings(initial ?? new FontSettingsData());
 			DataContext = _viewModel;
 		}
@@ -45,6 +49,8 @@ namespace StickIt
 		public System.Windows.Media.Color Color { get; set; } = System.Windows.Media.Colors.Black;
 		public bool ApplyToSelection { get; set; } = true;
 		public bool ApplyToEntireNote { get; set; }
+     public bool SetAsDefaultForNewNotes { get; set; }
+		public bool ApplyToAllOpenNotes { get; set; }
 	}
 
 	public sealed class FontSettingsViewModel : INotifyPropertyChanged
@@ -52,6 +58,9 @@ namespace StickIt
 		public ObservableCollection<System.Windows.Media.FontFamily> FontFamilies { get; }
 		public ObservableCollection<double> FontSizes { get; }
 		public ObservableCollection<ColorItem> Colors { get; }
+
+		private readonly List<System.Windows.Media.FontFamily> _allFontFamilies;
+		private readonly List<HandwrittenFontEntry> _handwrittenFontFamilies;
 
 		public System.Windows.Media.FontFamily FontFamily { get => _fontFamily; set => SetField(ref _fontFamily, value); }
 		public double FontSize { get => _fontSize; set => SetField(ref _fontSize, value); }
@@ -72,6 +81,20 @@ namespace StickIt
 					OnPropertyChanged(nameof(ApplyToDefaults));
 					OnPropertyChanged(nameof(ApplyToEntireNote));
 				}
+			}
+		} // Fixed bracket placement
+
+		public bool SetAsDefaultForNewNotes { get => _setAsDefaultForNewNotes; set => SetField(ref _setAsDefaultForNewNotes, value); }
+		public bool ApplyToAllOpenNotes { get => _applyToAllOpenNotes; set => SetField(ref _applyToAllOpenNotes, value); }
+		public bool HandwrittenNoteLook
+		{
+			get => _handwrittenNoteLook;
+			set
+			{
+				if (!SetField(ref _handwrittenNoteLook, value))
+					return;
+
+				ApplyFontFamilyFilter();
 			}
 		}
 
@@ -115,28 +138,35 @@ namespace StickIt
 		private ColorItem _selectedColor = ColorItem.FromColor("Black", System.Windows.Media.Colors.Black);
 		private bool _applyToSelection = true;
 		private bool _applyToEntireNote;
+		private bool _setAsDefaultForNewNotes;
+		private bool _applyToAllOpenNotes;
+		private bool _handwrittenNoteLook;
 
 		public event PropertyChangedEventHandler? PropertyChanged;
 
 		private FontSettingsViewModel()
 		{
-			FontFamilies = new ObservableCollection<System.Windows.Media.FontFamily>(Fonts.SystemFontFamilies.OrderBy(f => f.Source));
+       _allFontFamilies = Fonts.SystemFontFamilies.OrderBy(f => f.Source).ToList();
+			_handwrittenFontFamilies = LoadHandwrittenFonts();
+			FontFamilies = new ObservableCollection<System.Windows.Media.FontFamily>(_allFontFamilies);
 			FontSizes = new ObservableCollection<double>(new[] { 8d, 9d, 10d, 11d, 12d, 13d, 14d, 15d, 16d, 18d, 19d, 20d, 22d, 24d, 28d, 32d, 36d, 48d, 72d });
 			Colors = new ObservableCollection<ColorItem>(ColorItem.Defaults);
 		}
 
 		public static FontSettingsViewModel FromSettings(FontSettingsData settings)
 		{
-			var vm = new FontSettingsViewModel
-			{
-				FontFamily = new System.Windows.Media.FontFamily(settings.FontFamily),
-				FontSize = settings.FontSize,
-				IsBold = settings.IsBold,
-				IsItalic = settings.IsItalic,
-				IsUnderline = settings.IsUnderline,
-				ApplyToSelection = settings.ApplyToSelection,
-				ApplyToEntireNote = settings.ApplyToEntireNote
-			};
+        var vm = new FontSettingsViewModel();
+
+			vm.HandwrittenNoteLook = vm.IsHandwrittenFont(settings.FontFamily);
+			vm.FontFamily = vm.ResolveFontFamily(settings.FontFamily);
+			vm.FontSize = settings.FontSize;
+			vm.IsBold = settings.IsBold;
+			vm.IsItalic = settings.IsItalic;
+			vm.IsUnderline = settings.IsUnderline;
+			vm.ApplyToSelection = settings.ApplyToSelection;
+			vm.ApplyToEntireNote = settings.ApplyToEntireNote;
+			vm.SetAsDefaultForNewNotes = settings.SetAsDefaultForNewNotes;
+			vm.ApplyToAllOpenNotes = settings.ApplyToAllOpenNotes;
 
 			vm.SelectedColor = vm.Colors.FirstOrDefault(c => c.Color == settings.Color) ?? vm.Colors.First();
 			return vm;
@@ -146,14 +176,16 @@ namespace StickIt
 		{
 			return new FontSettingsData
 			{
-				FontFamily = FontFamily.Source,
+           FontFamily = GetPersistedFontFamily(FontFamily),
 				FontSize = FontSize,
 				IsBold = IsBold,
 				IsItalic = IsItalic,
 				IsUnderline = IsUnderline,
 				Color = SelectedColor.Color,
 				ApplyToSelection = ApplyToSelection,
-				ApplyToEntireNote = ApplyToEntireNote
+           ApplyToEntireNote = ApplyToEntireNote,
+				SetAsDefaultForNewNotes = SetAsDefaultForNewNotes,
+				ApplyToAllOpenNotes = ApplyToAllOpenNotes
 			};
 		}
 
@@ -177,6 +209,116 @@ namespace StickIt
 
 			return true;
 		}
+
+		private void ApplyFontFamilyFilter()
+		{
+			var candidate = FontFamily;
+
+			var source = HandwrittenNoteLook
+				? _handwrittenFontFamilies.Select(f => f.FontFamily).ToList()
+				: _allFontFamilies;
+
+			FontFamilies.Clear();
+			foreach (var font in source)
+				FontFamilies.Add(font);
+
+			if (FontFamilies.Count == 0)
+				return;
+
+			var resolved = FontFamilies.FirstOrDefault(f => AreSameFont(f, candidate));
+			FontFamily = resolved ?? FontFamilies.First();
+		}
+
+		private System.Windows.Media.FontFamily ResolveFontFamily(string persistedFont)
+		{
+			if (!string.IsNullOrWhiteSpace(persistedFont))
+			{
+				var existing = _allFontFamilies.FirstOrDefault(f => AreSameFont(f, persistedFont));
+				if (existing != null)
+					return existing;
+
+				try
+				{
+					return new System.Windows.Media.FontFamily(persistedFont);
+				}
+				catch
+				{
+					// fallback below
+				}
+			}
+
+			return _allFontFamilies.FirstOrDefault() ?? new System.Windows.Media.FontFamily("Segoe UI");
+		}
+
+		private bool IsHandwrittenFont(string persistedFont)
+		{
+			return _handwrittenFontFamilies.Any(f =>
+				string.Equals(NormalizeFontKey(f.PersistValue), NormalizeFontKey(persistedFont), StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(NormalizeFontKey(f.FamilyName), NormalizeFontKey(persistedFont), StringComparison.OrdinalIgnoreCase));
+		}
+
+		private string GetPersistedFontFamily(System.Windows.Media.FontFamily fontFamily)
+		{
+			var handwritten = _handwrittenFontFamilies.FirstOrDefault(f => AreSameFont(f.FontFamily, fontFamily));
+			return handwritten?.PersistValue ?? fontFamily.Source;
+		}
+
+		private static bool AreSameFont(System.Windows.Media.FontFamily left, System.Windows.Media.FontFamily right)
+			=> string.Equals(NormalizeFontKey(left.Source), NormalizeFontKey(right.Source), StringComparison.OrdinalIgnoreCase);
+
+		private static bool AreSameFont(System.Windows.Media.FontFamily left, string right)
+			=> string.Equals(NormalizeFontKey(left.Source), NormalizeFontKey(right), StringComparison.OrdinalIgnoreCase);
+
+		private static string NormalizeFontKey(string? value)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+				return string.Empty;
+
+			var v = value.Trim();
+			var hashIndex = v.LastIndexOf('#');
+			if (hashIndex >= 0 && hashIndex < v.Length - 1)
+				v = v[(hashIndex + 1)..];
+
+			if (v.StartsWith("./", StringComparison.Ordinal))
+				v = v[2..];
+
+			return v.Trim().ToLowerInvariant();
+		}
+
+		private static List<HandwrittenFontEntry> LoadHandwrittenFonts()
+		{
+			var result = new List<HandwrittenFontEntry>();
+			var fontsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Properties", "Fonts");
+
+			if (!Directory.Exists(fontsDir))
+				return result;
+
+			foreach (var filePath in Directory.EnumerateFiles(fontsDir)
+				.Where(p => p.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".otf", StringComparison.OrdinalIgnoreCase))
+				.OrderBy(p => p))
+			{
+				try
+				{
+					var glyph = new GlyphTypeface(new Uri(filePath, UriKind.Absolute));
+					var familyName = glyph.FamilyNames.Values.FirstOrDefault() ?? Path.GetFileNameWithoutExtension(filePath);
+					var persistValue = $"pack://siteoforigin:,,,/Properties/Fonts/#{familyName}";
+					var fontFamily = new System.Windows.Media.FontFamily(persistValue);
+
+					if (result.Any(f => string.Equals(NormalizeFontKey(f.FamilyName), NormalizeFontKey(familyName), StringComparison.OrdinalIgnoreCase)))
+						continue;
+
+					result.Add(new HandwrittenFontEntry(fontFamily, persistValue, familyName));
+				}
+				catch
+				{
+					// Ignore invalid/unloadable font file
+				}
+			}
+
+			return result;
+		}
+
+		private sealed record HandwrittenFontEntry(System.Windows.Media.FontFamily FontFamily, string PersistValue, string FamilyName);
 	}
 
 	public sealed class ColorItem

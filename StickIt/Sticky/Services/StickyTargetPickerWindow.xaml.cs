@@ -12,6 +12,7 @@ namespace StickIt.Sticky
 		public StickyTargetPickerWindow()
 		{
 			InitializeComponent();
+        AppThemeService.ApplyDialogTheme(this);
 			Refresh();
 
 		}

@@ -14,11 +14,15 @@ namespace StickIt.Services
 		public static void CaptureForWindow(NotePersist persist, Window w)
 		{
 			var screen = GetScreenForWindow(w);
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(w);
+			double scaleX = Math.Max(0.01, dpi.DpiScaleX);
+			double scaleY = Math.Max(0.01, dpi.DpiScaleY);
+
 			persist.MonitorDeviceName = screen.DeviceName;
-			persist.MonitorWorkAreaLeft = screen.WorkingArea.Left;
-			persist.MonitorWorkAreaTop = screen.WorkingArea.Top;
-			persist.MonitorWorkAreaWidth = screen.WorkingArea.Width;
-			persist.MonitorWorkAreaHeight = screen.WorkingArea.Height;
+         persist.MonitorWorkAreaLeft = screen.WorkingArea.Left / scaleX;
+			persist.MonitorWorkAreaTop = screen.WorkingArea.Top / scaleY;
+			persist.MonitorWorkAreaWidth = screen.WorkingArea.Width / scaleX;
+			persist.MonitorWorkAreaHeight = screen.WorkingArea.Height / scaleY;
 		}
 
 		public static Screen? TryGetByDeviceName(string? deviceName)

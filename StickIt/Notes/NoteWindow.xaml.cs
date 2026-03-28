@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Ink;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
@@ -47,9 +48,32 @@ namespace StickIt
 
       private bool _suppressTextChanged;
       private bool _dropShadowEnabled = true;
+      private bool _noteBordersEnabled = true;
       private bool _snapToGridEnabled;
       private bool _snapGridAdjusting;
-      private const double SnapGridSize = 20.0;
+      private bool _inkModeEnabled;
+      private bool _inkEraseModeEnabled;
+      private bool _suppressInkChanged;
+      private double _inkThicknessLevel = 1.0;
+      private System.Windows.Media.Color _inkColor = System.Windows.Media.Colors.Black;
+      private bool _inkColorIsCustom;
+      private InkToolbarWindow? _inkToolbarWindow;
+      private bool _inkToolbarSnapEnabled = true;
+      private bool _suppressToolbarMoveHandling;
+      private InkToolbarDock _inkToolbarDock = InkToolbarDock.Right;
+      private double _inkToolbarDockOffset = 8;
+      private const double InkToolbarGap = 8.0;
+      private const double InkToolbarSnapDistance = 24.0;
+      private const double SnapGridSizeDefault = 20.0;
+      private const double SnapGridSizeLowResolution = 16.0;
+
+      private enum InkToolbarDock
+      {
+         Left,
+         Right,
+         Top,
+         Bottom
+      }
 
 
 
@@ -64,6 +88,51 @@ namespace StickIt
       private System.Windows.Point GetNoteTopLeftPx()
       {
          return this.PointToScreen(new System.Windows.Point(0, 0));
+      }
+
+      public string? GetInkIsfBase64()
+      {
+         if (inkLayer == null || inkLayer.Strokes.Count == 0)
+            return null;
+
+         try
+         {
+            using var ms = new MemoryStream();
+            inkLayer.Strokes.Save(ms);
+            if (ms.Length == 0)
+               return null;
+
+            return Convert.ToBase64String(ms.ToArray());
+         }
+         catch
+         {
+            return null;
+         }
+      }
+
+      public void SetInkIsfBase64(string? inkIsfBase64)
+      {
+         if (inkLayer == null)
+            return;
+
+         WithSuppressedInkChanged(() =>
+         {
+            inkLayer.Strokes.Clear();
+
+            if (string.IsNullOrWhiteSpace(inkIsfBase64))
+               return;
+
+            try
+            {
+               var bytes = Convert.FromBase64String(inkIsfBase64);
+               using var ms = new MemoryStream(bytes);
+               inkLayer.Strokes = new StrokeCollection(ms);
+            }
+            catch
+            {
+               inkLayer.Strokes.Clear();
+            }
+         });
       }
 
       public int StuckMode
@@ -190,6 +259,8 @@ namespace StickIt
 
          txtNoteContent.SelectionChanged += txtNoteContent_SelectionChanged;
          LocationChanged += NoteWindow_LocationChanged;
+         SizeChanged += NoteWindow_SizeChanged;
+         StateChanged += NoteWindow_StateChanged;
          Closing += NoteWindow_Closing;
 
          CommandBindings.Add(new CommandBinding(CmdBold,
@@ -213,6 +284,14 @@ namespace StickIt
             if (ctrl && (e.Key == Key.Z || e.Key == Key.Y))
                NoteUndoRedoRequested?.Invoke(this, EventArgs.Empty);
 
+         if ((Keyboard.Modifiers & (ModifierKeys.Shift | ModifierKeys.Control | ModifierKeys.Alt)) == ModifierKeys.Shift
+            && e.Key == Key.Enter)
+         {
+            EditingCommands.EnterParagraphBreak.Execute(null, txtNoteContent);
+            e.Handled = true;
+            return;
+         }
+
             if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)
                      && e.Key == Key.X)
             {
@@ -231,6 +310,7 @@ namespace StickIt
 
          _note = note;
          DataContext = _note;
+         ConfigureInkLayer();
 
          // Keep autosave behavior consistent regardless of constructor use
          txtNoteContent.TextChanged += (_, __) =>
@@ -312,6 +392,26 @@ namespace StickIt
 
       protected override void OnClosed(EventArgs e)
       {
+         try
+         {
+            if (_inkToolbarWindow != null)
+            {
+               _inkToolbarWindow.PenRequested -= InkToolbarWindow_PenRequested;
+               _inkToolbarWindow.EraseRequested -= InkToolbarWindow_EraseRequested;
+               _inkToolbarWindow.ClearRequested -= InkToolbarWindow_ClearRequested;
+               _inkToolbarWindow.DoneRequested -= InkToolbarWindow_DoneRequested;
+               _inkToolbarWindow.ThicknessChanged -= InkToolbarWindow_ThicknessChanged;
+               _inkToolbarWindow.ColorChanged -= InkToolbarWindow_ColorChanged;
+               _inkToolbarWindow.LocationChanged -= InkToolbarWindow_LocationChanged;
+               _inkToolbarWindow.Close();
+               _inkToolbarWindow = null;
+            }
+         }
+         catch
+         {
+            // best-effort
+         }
+
          try { ClearLocalAotOwner(); } catch { }
          base.OnClosed(e);
       }
@@ -388,6 +488,243 @@ namespace StickIt
          _suppressTextChanged = true;
          try { action(); }
          finally { _suppressTextChanged = false; }
+      }
+
+      private void WithSuppressedInkChanged(Action action)
+      {
+         _suppressInkChanged = true;
+         try { action(); }
+         finally { _suppressInkChanged = false; }
+      }
+
+      private void ConfigureInkLayer()
+      {
+         if (inkLayer == null)
+            return;
+
+         inkLayer.EditingMode = InkCanvasEditingMode.Ink;
+         _inkColor = GetDefaultTextColor();
+         ApplyInkDrawingAttributes();
+
+         inkLayer.StrokeCollected += (_, __) =>
+         {
+            if (_suppressInkChanged)
+               return;
+            NoteTextChanged?.Invoke(this, EventArgs.Empty);
+         };
+
+         inkLayer.Strokes.StrokesChanged += (_, __) =>
+         {
+            if (_suppressInkChanged)
+               return;
+            NoteTextChanged?.Invoke(this, EventArgs.Empty);
+         };
+
+         ApplyInkMode();
+      }
+
+      private void ApplyInkMode()
+      {
+         if (inkLayer == null || txtNoteContent == null)
+            return;
+
+         inkLayer.IsHitTestVisible = _inkModeEnabled;
+         inkLayer.EditingMode = _inkModeEnabled
+            ? (_inkEraseModeEnabled ? InkCanvasEditingMode.EraseByStroke : InkCanvasEditingMode.Ink)
+            : InkCanvasEditingMode.None;
+
+         txtNoteContent.IsReadOnly = _inkModeEnabled;
+
+         if (miInkMode != null)
+            miInkMode.IsChecked = _inkModeEnabled;
+         if (miInkEraseMode != null)
+         {
+            miInkEraseMode.IsChecked = _inkModeEnabled && _inkEraseModeEnabled;
+            miInkEraseMode.IsEnabled = _inkModeEnabled;
+         }
+
+         if (_inkModeEnabled && WindowState != WindowState.Minimized)
+         {
+            EnsureInkToolbar();
+            if (_inkToolbarWindow != null)
+            {
+               _inkToolbarWindow.SetMode(_inkModeEnabled, _inkEraseModeEnabled);
+               _inkToolbarWindow.SetThickness(_inkThicknessLevel);
+               _inkToolbarWindow.SetColor(_inkColor);
+
+               if (!_inkToolbarWindow.IsVisible)
+                  _inkToolbarWindow.Show();
+
+               if (_inkToolbarSnapEnabled)
+                  PositionInkToolbar();
+            }
+         }
+         else
+         {
+            if (_inkToolbarWindow?.IsVisible == true)
+               _inkToolbarWindow.Hide();
+         }
+      }
+
+      private void EnsureInkToolbar()
+      {
+         if (_inkToolbarWindow != null)
+            return;
+
+         _inkToolbarWindow = new InkToolbarWindow
+         {
+            Owner = this,
+            ShowInTaskbar = false
+         };
+
+         _inkToolbarWindow.PenRequested += InkToolbarWindow_PenRequested;
+         _inkToolbarWindow.EraseRequested += InkToolbarWindow_EraseRequested;
+         _inkToolbarWindow.ClearRequested += InkToolbarWindow_ClearRequested;
+         _inkToolbarWindow.DoneRequested += InkToolbarWindow_DoneRequested;
+         _inkToolbarWindow.ThicknessChanged += InkToolbarWindow_ThicknessChanged;
+         _inkToolbarWindow.ColorChanged += InkToolbarWindow_ColorChanged;
+         _inkToolbarWindow.LocationChanged += InkToolbarWindow_LocationChanged;
+         _inkToolbarWindow.SetThickness(_inkThicknessLevel);
+         _inkToolbarWindow.SetColor(_inkColor);
+      }
+
+      private void InkToolbarWindow_PenRequested(object? sender, EventArgs e)
+      {
+         _inkModeEnabled = true;
+         _inkEraseModeEnabled = false;
+         ApplyInkMode();
+      }
+
+      private void InkToolbarWindow_EraseRequested(object? sender, EventArgs e)
+      {
+         _inkModeEnabled = true;
+         _inkEraseModeEnabled = true;
+         ApplyInkMode();
+      }
+
+      private void InkToolbarWindow_ClearRequested(object? sender, EventArgs e)
+      {
+         Menu_ClearInk(this, new RoutedEventArgs());
+      }
+
+      private void InkToolbarWindow_DoneRequested(object? sender, EventArgs e)
+      {
+         _inkModeEnabled = false;
+         _inkEraseModeEnabled = false;
+         ApplyInkMode();
+      }
+
+      private void InkToolbarWindow_ThicknessChanged(double thickness)
+      {
+         _inkThicknessLevel = Math.Max(1.0, Math.Min(10.0, thickness));
+         ApplyInkDrawingAttributes();
+      }
+
+      private void InkToolbarWindow_ColorChanged(System.Windows.Media.Color color)
+      {
+         _inkColor = color;
+         _inkColorIsCustom = true;
+         ApplyInkDrawingAttributes();
+      }
+
+      private void InkToolbarWindow_LocationChanged(object? sender, EventArgs e)
+      {
+         if (_inkToolbarWindow == null || _suppressToolbarMoveHandling)
+            return;
+
+         TrySnapInkToolbarToNote();
+      }
+
+      private void PositionInkToolbar()
+      {
+         if (_inkToolbarWindow == null)
+            return;
+
+         var noteRect = new Rect(Left, Top, Width, Height);
+         var toolbarWidth = _inkToolbarWindow.ActualWidth > 0 ? _inkToolbarWindow.ActualWidth : _inkToolbarWindow.Width;
+         var toolbarHeight = _inkToolbarWindow.ActualHeight > 0 ? _inkToolbarWindow.ActualHeight : _inkToolbarWindow.Height;
+
+         double left;
+         double top;
+
+         switch (_inkToolbarDock)
+         {
+            case InkToolbarDock.Left:
+               left = noteRect.Left - toolbarWidth - InkToolbarGap;
+               top = noteRect.Top + _inkToolbarDockOffset;
+               break;
+            case InkToolbarDock.Top:
+               left = noteRect.Left + _inkToolbarDockOffset;
+               top = noteRect.Top - toolbarHeight - InkToolbarGap;
+               break;
+            case InkToolbarDock.Bottom:
+               left = noteRect.Left + _inkToolbarDockOffset;
+               top = noteRect.Bottom + InkToolbarGap;
+               break;
+            default:
+               left = noteRect.Right + InkToolbarGap;
+               top = noteRect.Top + _inkToolbarDockOffset;
+               break;
+         }
+
+         _suppressToolbarMoveHandling = true;
+         try
+         {
+            _inkToolbarWindow.Left = left;
+            _inkToolbarWindow.Top = top;
+         }
+         finally
+         {
+            _suppressToolbarMoveHandling = false;
+         }
+      }
+
+      private void TrySnapInkToolbarToNote()
+      {
+         if (_inkToolbarWindow == null)
+            return;
+
+         var noteRect = new Rect(Left, Top, Width, Height);
+         var toolbarRect = new Rect(_inkToolbarWindow.Left, _inkToolbarWindow.Top,
+            _inkToolbarWindow.ActualWidth > 0 ? _inkToolbarWindow.ActualWidth : _inkToolbarWindow.Width,
+            _inkToolbarWindow.ActualHeight > 0 ? _inkToolbarWindow.ActualHeight : _inkToolbarWindow.Height);
+
+         var rightDistance = Math.Abs(toolbarRect.Left - (noteRect.Right + InkToolbarGap));
+         var leftDistance = Math.Abs(toolbarRect.Right - (noteRect.Left - InkToolbarGap));
+         var topDistance = Math.Abs(toolbarRect.Bottom - (noteRect.Top - InkToolbarGap));
+         var bottomDistance = Math.Abs(toolbarRect.Top - (noteRect.Bottom + InkToolbarGap));
+
+         var minDistance = new[] { rightDistance, leftDistance, topDistance, bottomDistance }.Min();
+
+         if (minDistance > InkToolbarSnapDistance)
+         {
+            _inkToolbarSnapEnabled = false;
+            return;
+         }
+
+         _inkToolbarSnapEnabled = true;
+         if (minDistance == rightDistance)
+         {
+            _inkToolbarDock = InkToolbarDock.Right;
+            _inkToolbarDockOffset = toolbarRect.Top - noteRect.Top;
+         }
+         else if (minDistance == leftDistance)
+         {
+            _inkToolbarDock = InkToolbarDock.Left;
+            _inkToolbarDockOffset = toolbarRect.Top - noteRect.Top;
+         }
+         else if (minDistance == topDistance)
+         {
+            _inkToolbarDock = InkToolbarDock.Top;
+            _inkToolbarDockOffset = toolbarRect.Left - noteRect.Left;
+         }
+         else
+         {
+            _inkToolbarDock = InkToolbarDock.Bottom;
+            _inkToolbarDockOffset = toolbarRect.Left - noteRect.Left;
+         }
+
+         PositionInkToolbar();
       }
 
       private static bool IsUnset(object v) => v == DependencyProperty.UnsetValue || v == null;
@@ -494,7 +831,10 @@ namespace StickIt
       public void SetColorKey(string keyName)
       {
          if (_note != null && Enum.TryParse(keyName, out NoteColors.NoteColor key))
+         {
             _note.ColorKey = key;
+        ApplyDefaultInkAttributes();
+      }
       }
 
       private void ColorMenuItem_Click(object sender, RoutedEventArgs e)
@@ -506,7 +846,10 @@ namespace StickIt
             return;
 
          if (menuItem.Tag is string tag && Enum.TryParse(tag, out NoteColors.NoteColor color))
+         {
             _note.ColorKey = color;
+        ApplyDefaultInkAttributes();
+      }
       }
 
       private void btnClose_Click(object sender, RoutedEventArgs e)
@@ -612,6 +955,7 @@ namespace StickIt
          range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily(familyName));
          range.ApplyPropertyValue(TextElement.FontSizeProperty, sizePt);
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
+         ApplyDefaultInkAttributes();
 
       }
 
@@ -711,6 +1055,7 @@ namespace StickIt
          {
             if (_note != null)
                _note.ColorKey = key;
+          ApplyDefaultInkAttributes();
             AppInstance.QueueSaveFromWindow(); // we’ll add this tiny helper in App
          }
       }
@@ -778,10 +1123,44 @@ namespace StickIt
             return;
 
          ApplyFontSettings(dlg.Settings);
+
+         if (dlg.Settings.SetAsDefaultForNewNotes)
+            AppInstance.UpdateDefaultBodyFont(dlg.Settings.FontFamily, dlg.Settings.FontSize);
+
+         if (dlg.Settings.ApplyToAllOpenNotes)
+            AppInstance.ApplyFontSettingsToAllOpenNotes(dlg.Settings, this);
       }
 
 
       private void Menu_LoadNotes(object sender, RoutedEventArgs e) { }
+
+      private void Menu_InkMode(object sender, RoutedEventArgs e)
+      {
+         _inkModeEnabled = !_inkModeEnabled;
+         if (!_inkModeEnabled)
+            _inkEraseModeEnabled = false;
+
+         ApplyInkMode();
+      }
+
+      private void Menu_InkEraseMode(object sender, RoutedEventArgs e)
+      {
+         if (!_inkModeEnabled)
+            return;
+
+         _inkEraseModeEnabled = !_inkEraseModeEnabled;
+         ApplyInkMode();
+      }
+
+      private void Menu_ClearInk(object sender, RoutedEventArgs e)
+      {
+         if (inkLayer == null || inkLayer.Strokes.Count == 0)
+            return;
+
+         WithSuppressedInkChanged(() => inkLayer.Strokes.Clear());
+         NoteTextChanged?.Invoke(this, EventArgs.Empty);
+      }
+
       private void Menu_Preferences(object sender, RoutedEventArgs e)
       {
          AppInstance.ShowPreferences();
@@ -869,6 +1248,26 @@ namespace StickIt
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(settings.Color));
 
          NoteTextChanged?.Invoke(this, EventArgs.Empty);
+      }
+
+      public void ApplyFontSettingsToEntireNote(FontSettingsData settings)
+      {
+         if (settings == null)
+            return;
+
+         ApplyFontSettings(new FontSettingsData
+         {
+            FontFamily = settings.FontFamily,
+            FontSize = settings.FontSize,
+            IsBold = settings.IsBold,
+            IsItalic = settings.IsItalic,
+            IsUnderline = settings.IsUnderline,
+            Color = settings.Color,
+            ApplyToSelection = false,
+            ApplyToEntireNote = true,
+            SetAsDefaultForNewNotes = false,
+            ApplyToAllOpenNotes = false
+         });
       }
 
 
@@ -1235,6 +1634,35 @@ namespace StickIt
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
       }
 
+      private void ApplyDefaultInkAttributes()
+      {
+         if (inkLayer?.DefaultDrawingAttributes == null || _inkColorIsCustom)
+            return;
+
+         _inkColor = GetDefaultTextColor();
+         ApplyInkDrawingAttributes();
+      }
+
+      private void ApplyInkDrawingAttributes()
+      {
+         if (inkLayer == null)
+            return;
+
+         var size = Math.Max(0.5, _inkThicknessLevel) * 2.0;
+
+         inkLayer.DefaultDrawingAttributes = new DrawingAttributes
+         {
+            Color = _inkColor,
+            Width = size,
+            Height = size,
+            FitToCurve = true,
+            IgnorePressure = false
+         };
+
+         _inkToolbarWindow?.SetColor(_inkColor);
+         _inkToolbarWindow?.SetThickness(_inkThicknessLevel);
+      }
+
       private void Sticky_NotStuck_Click(object sender, RoutedEventArgs e)
       {
          ApplyStuckMode(0);
@@ -1320,8 +1748,6 @@ namespace StickIt
       {
          if (NoteChrome == null) return;
 
-         NoteChrome.ClearValue(Border.BorderThicknessProperty);
-
          if (_dropShadowEnabled)
             NoteChrome.ClearValue(Border.EffectProperty);
          else
@@ -1332,11 +1758,51 @@ namespace StickIt
             StickyAccent.ClearValue(Border.BorderBrushProperty);
             StickyAccent.ClearValue(Border.BorderThicknessProperty);
          }
+
+         if (StickyOverlay != null)
+         {
+            StickyOverlay.ClearValue(Border.BorderBrushProperty);
+            StickyOverlay.ClearValue(Border.BorderThicknessProperty);
+         }
+
+         if (!_noteBordersEnabled)
+         {
+            NoteChrome.BorderThickness = new Thickness(1);
+            NoteChrome.BorderBrush = NoteChrome.Background;
+
+            if (StickyAccent != null)
+            {
+               StickyAccent.BorderThickness = new Thickness(0);
+               StickyAccent.BorderBrush = System.Windows.Media.Brushes.Transparent;
+            }
+
+            if (StickyOverlay != null)
+            {
+               StickyOverlay.BorderThickness = new Thickness(0);
+               StickyOverlay.BorderBrush = System.Windows.Media.Brushes.Transparent;
+            }
+         }
+         else
+         {
+            NoteChrome.BorderThickness = new Thickness(2);
+
+            var converter = TryFindResource("NoteComponentBrush") as System.Windows.Data.IValueConverter;
+            if (converter != null)
+            {
+               var borderBinding = new System.Windows.Data.Binding("ColorKey")
+               {
+                  Converter = converter,
+                  ConverterParameter = "Buttons"
+               };
+               NoteChrome.SetBinding(Border.BorderBrushProperty, borderBinding);
+            }
+         }
       }
 
       public void ApplyPreferences(StickIt.Persistence.AppPreferences prefs)
       {
          _dropShadowEnabled = prefs.EnableDropShadow;
+         _noteBordersEnabled = prefs.EnableNoteBorders;
          _snapToGridEnabled = prefs.SnapNotesToGrid;
 
          if (txtNoteTitle != null)
@@ -1351,6 +1817,7 @@ namespace StickIt
             }
 
             txtNoteTitle.FontSize = prefs.TitleFontSize;
+           txtNoteTitle.FontWeight = prefs.TitleFontBold ? FontWeights.Bold : FontWeights.Normal;
          }
 
          UpdateStickyVisuals();
@@ -1377,28 +1844,47 @@ namespace StickIt
 
       private void NoteWindow_LocationChanged(object? sender, EventArgs e)
       {
-         if (!_snapToGridEnabled || _snapGridAdjusting)
-            return;
+         if (_inkToolbarSnapEnabled && _inkModeEnabled && WindowState != WindowState.Minimized)
+            PositionInkToolbar();
 
-         if (_noteStuckMode == 2)
-            return;
-
-         double snappedLeft = Math.Round(Left / SnapGridSize) * SnapGridSize;
-         double snappedTop = Math.Round(Top / SnapGridSize) * SnapGridSize;
-
-         if (Math.Abs(snappedLeft - Left) < 0.5 && Math.Abs(snappedTop - Top) < 0.5)
-            return;
-
-         _snapGridAdjusting = true;
-         try
+         if (_snapToGridEnabled && !_snapGridAdjusting && _noteStuckMode != 2)
          {
-            Left = snappedLeft;
-            Top = snappedTop;
+            double snapGridSize = GetSnapGridSize();
+            double snappedLeft = Math.Round(Left / snapGridSize) * snapGridSize;
+            double snappedTop = Math.Round(Top / snapGridSize) * snapGridSize;
+
+            if (Math.Abs(snappedLeft - Left) >= 0.5 || Math.Abs(snappedTop - Top) >= 0.5)
+            {
+               _snapGridAdjusting = true;
+               try
+               {
+                  Left = snappedLeft;
+                  Top = snappedTop;
+               }
+               finally
+               {
+                  _snapGridAdjusting = false;
+               }
+            }
          }
-         finally
-         {
-            _snapGridAdjusting = false;
-         }
+      }
+
+      private void NoteWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+      {
+         if (_inkToolbarSnapEnabled && _inkModeEnabled && WindowState != WindowState.Minimized)
+            PositionInkToolbar();
+      }
+
+      private void NoteWindow_StateChanged(object? sender, EventArgs e)
+      {
+         ApplyInkMode();
+      }
+
+      private static double GetSnapGridSize()
+      {
+         return SystemParameters.PrimaryScreenWidth <= 1920 || SystemParameters.PrimaryScreenHeight <= 1080
+            ? SnapGridSizeLowResolution
+            : SnapGridSizeDefault;
       }
 
 

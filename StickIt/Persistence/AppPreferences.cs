@@ -21,9 +21,11 @@ namespace StickIt.Persistence
 
 		public string TitleFontFamily { get; set; } = "Helvetica";
 		public double TitleFontSize { get; set; } = 19.0;
+    public bool TitleFontBold { get; set; } = true;
 		public string BodyFontFamily { get; set; } = "Segoe UI";
 		public double BodyFontSize { get; set; } = 14.0;
 		public bool ShowDateAlongTitle { get; set; }
 		public bool EnableDropShadow { get; set; } = true;
+     public bool EnableNoteBorders { get; set; } = true;
 	}
 }

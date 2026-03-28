@@ -50,6 +50,7 @@ namespace StickIt.Persistence
 
 				Rtf = w.GetRtf(),
 				RtfSchemaVersion = 1,
+           InkIsfBase64 = w.GetInkIsfBase64(),
 				Text = w.GetText(),
 
 				ColorKey = w.GetColorKey().ToString(),

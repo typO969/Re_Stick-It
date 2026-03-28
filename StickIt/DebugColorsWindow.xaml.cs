@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using StickIt.Models;
+using StickIt.Services;
 
 namespace StickIt
 {
@@ -8,6 +9,7 @@ namespace StickIt
 		public DebugColorsWindow(NoteModel note)
 		{
 			InitializeComponent();
+        AppThemeService.ApplyDialogTheme(this);
 			DataContext = note;
 		}
 	}

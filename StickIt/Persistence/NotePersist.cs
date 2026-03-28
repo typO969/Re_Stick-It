@@ -19,6 +19,7 @@ namespace StickIt.Persistence
 
 		public string? Rtf { get; set; } = null;
 		public int RtfSchemaVersion { get; set; } = 1;
+		public string? InkIsfBase64 { get; set; } = null;
 
 		// Content + appearance
 		public string Title { get; set; } = "Untitled";

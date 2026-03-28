@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Windows;
+using StickIt.Services;
 
 namespace StickIt
 {
@@ -11,6 +12,7 @@ namespace StickIt
 		public DesktopAreaWindow(double? left, double? top, double? width, double? height)
 		{
 			InitializeComponent();
+			AppThemeService.ApplyDialogTheme(this);
 
 			LeftBox.Text = Format(left);
 			TopBox.Text = Format(top);
