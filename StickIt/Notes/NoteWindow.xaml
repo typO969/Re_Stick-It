@@ -463,6 +463,7 @@
 
                <!--  Save/Load (note: you already autosave, but keep these for parity)  -->
                <MenuItem Click="Menu_SaveNow" Header="Save notes now" />
+                <MenuItem Click="Menu_SyncNow" Header="Sync now" />
                <MenuItem
                   Click="Menu_LoadNotes"
                   Header="Load notes..."

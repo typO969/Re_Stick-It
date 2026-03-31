@@ -34,6 +34,7 @@ namespace StickIt
 
 
 		private DateTime? _pendingSaveDueUtc;
+		private bool _suppressAutoSave;
 
       // Debounce saving so we don’t write on every keystroke/mouse move
       private readonly DispatcherTimer _saveTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
@@ -352,6 +353,66 @@ namespace StickIt
 			_saveTimer.Stop();
 			FlushPendingUiEdits();
 			PersistAllWindows();
+		}
+
+		public bool TrySyncNow(out string message)
+		{
+			_saveTimer.Stop();
+			FlushPendingUiEdits();
+			PersistAllWindows();
+
+			if (!Preferences.SyncEnabled)
+			{
+				message = "Sync is disabled. Enable it in Preferences > Sync.";
+				return false;
+			}
+
+			var syncPath = Preferences.SyncFilePath?.Trim();
+			if (string.IsNullOrWhiteSpace(syncPath))
+			{
+				message = "Sync file is not set. Choose a .3m sync file in Preferences > Sync.";
+				return false;
+			}
+
+			try
+			{
+				var localSyncState = BuildSyncState(Preferences.SyncPreferences);
+				var pulledFromRemote = false;
+
+				if (System.IO.File.Exists(syncPath))
+				{
+					var remoteState = SyncStore.Load(syncPath);
+					var localStamp = SyncStore.GetNotesModifiedUtc(localSyncState);
+					var remoteStamp = SyncStore.GetNotesModifiedUtc(remoteState);
+
+					if (remoteStamp > localStamp)
+					{
+						ApplyRemoteSyncState(remoteState, Preferences.SyncPreferences);
+						pulledFromRemote = true;
+					}
+					else
+					{
+						SyncStore.Save(syncPath, localSyncState, Environment.MachineName);
+					}
+				}
+				else
+				{
+					SyncStore.Save(syncPath, localSyncState, Environment.MachineName);
+				}
+
+				_state.Preferences.LastSyncUtc = DateTime.UtcNow;
+				JsonStore.Save(_state);
+
+				message = pulledFromRemote
+					? "Sync complete. Pulled newer notes from sync file."
+					: "Sync complete. Pushed current notes to sync file.";
+				return true;
+			}
+			catch (Exception ex)
+			{
+				message = $"Sync failed: {ex.Message}";
+				return false;
+			}
 		}
 
 
@@ -678,6 +739,9 @@ namespace StickIt
 
 		private void QueueSave(int delayMs)
 		{
+       if (_suppressAutoSave)
+				return;
+
 			delayMs = Math.Max(50, delayMs);
 			var due = DateTime.UtcNow.AddMilliseconds(delayMs);
 			if (!_pendingSaveDueUtc.HasValue || due > _pendingSaveDueUtc.Value)
@@ -769,6 +833,101 @@ namespace StickIt
 				 .ToList();
 
 			JsonStore.Save(_state);
+		}
+
+		private StickItState BuildSyncState(bool includePreferences)
+		{
+			return new StickItState
+			{
+				Version = _state.Version,
+				Notes = _state.Notes.ToList(),
+				Preferences = includePreferences
+					? ClonePreferencesForSync(_state.Preferences)
+					: new AppPreferences()
+			};
+		}
+
+		private void ApplyRemoteSyncState(StickItState remoteState, bool includePreferences)
+		{
+			var currentSyncSettings = CloneSyncSettings(_state.Preferences);
+
+			_suppressAutoSave = true;
+			try
+			{
+				foreach (var w in _windows.ToArray())
+				{
+					try { w.Close(); }
+					catch { }
+				}
+
+				_windows.Clear();
+				_state.Notes = remoteState.Notes?.ToList() ?? new List<NotePersist>();
+
+				if (includePreferences)
+					_state.Preferences = remoteState.Preferences ?? new AppPreferences();
+
+				RestoreSyncSettings(_state.Preferences, currentSyncSettings);
+				ApplyPreferences(_state.Preferences, persist: false);
+
+				foreach (var note in _state.Notes)
+					SpawnWindow(note);
+			}
+			finally
+			{
+				_suppressAutoSave = false;
+			}
+		}
+
+		private static AppPreferences ClonePreferencesForSync(AppPreferences source)
+		{
+			return new AppPreferences
+			{
+				RunOnStartup = source.RunOnStartup,
+				DarkMode = source.DarkMode,
+				ShowTaskbarIcon = source.ShowTaskbarIcon,
+				ShowTrayIcon = source.ShowTrayIcon,
+				AlwaysStickNewNotesToDesktop = source.AlwaysStickNewNotesToDesktop,
+				SnapNotesToGrid = source.SnapNotesToGrid,
+				KeepNotesInsideDesktopArea = source.KeepNotesInsideDesktopArea,
+				DesktopAreaLeft = source.DesktopAreaLeft,
+				DesktopAreaTop = source.DesktopAreaTop,
+				DesktopAreaWidth = source.DesktopAreaWidth,
+				DesktopAreaHeight = source.DesktopAreaHeight,
+				ConfirmOnDelete = source.ConfirmOnDelete,
+				HideNotesOnShowDesktop = source.HideNotesOnShowDesktop,
+				TreatNotesAsTopLevelWindows = source.TreatNotesAsTopLevelWindows,
+				Mode2PreventManualMove = source.Mode2PreventManualMove,
+				Mode2MinimizeWithHost = source.Mode2MinimizeWithHost,
+				Mode2CloseNoteWhenHostCloses = source.Mode2CloseNoteWhenHostCloses,
+				Mode2HostMissingAction = source.Mode2HostMissingAction,
+				TitleFontFamily = source.TitleFontFamily,
+				TitleFontSize = source.TitleFontSize,
+				TitleFontBold = source.TitleFontBold,
+				BodyFontFamily = source.BodyFontFamily,
+				BodyFontSize = source.BodyFontSize,
+				ShowDateAlongTitle = source.ShowDateAlongTitle,
+				EnableDropShadow = source.EnableDropShadow,
+				EnableNoteBorders = source.EnableNoteBorders
+			};
+		}
+
+		private static AppPreferences CloneSyncSettings(AppPreferences source)
+		{
+			return new AppPreferences
+			{
+				SyncEnabled = source.SyncEnabled,
+				SyncFilePath = source.SyncFilePath,
+				SyncPreferences = source.SyncPreferences,
+				LastSyncUtc = source.LastSyncUtc
+			};
+		}
+
+		private static void RestoreSyncSettings(AppPreferences target, AppPreferences syncSettings)
+		{
+			target.SyncEnabled = syncSettings.SyncEnabled;
+			target.SyncFilePath = syncSettings.SyncFilePath;
+			target.SyncPreferences = syncSettings.SyncPreferences;
+			target.LastSyncUtc = syncSettings.LastSyncUtc;
 		}
 
 

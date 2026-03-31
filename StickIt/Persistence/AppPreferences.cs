@@ -1,5 +1,12 @@
 namespace StickIt.Persistence
 {
+  public enum Mode2HostMissingAction
+	{
+		StickToDesktop = 0,
+		SwitchToMode0 = 1,
+		SwitchToMode1 = 2
+	}
+
 	public sealed class AppPreferences
 	{
 		public bool RunOnStartup { get; set; }
@@ -17,7 +24,10 @@ namespace StickIt.Persistence
 		public bool ConfirmOnDelete { get; set; }
 		public bool HideNotesOnShowDesktop { get; set; }
 		public bool TreatNotesAsTopLevelWindows { get; set; } = true;
-		public bool SeparateNotesPerDesktopArea { get; set; }
+		public bool Mode2PreventManualMove { get; set; } = true;
+		public bool Mode2MinimizeWithHost { get; set; }
+		public bool Mode2CloseNoteWhenHostCloses { get; set; }
+		public Mode2HostMissingAction Mode2HostMissingAction { get; set; } = Mode2HostMissingAction.SwitchToMode1;
 
 		public string TitleFontFamily { get; set; } = "Helvetica";
 		public double TitleFontSize { get; set; } = 19.0;
@@ -27,5 +37,10 @@ namespace StickIt.Persistence
 		public bool ShowDateAlongTitle { get; set; }
 		public bool EnableDropShadow { get; set; } = true;
      public bool EnableNoteBorders { get; set; } = true;
+
+		public bool SyncEnabled { get; set; }
+		public string SyncFilePath { get; set; } = string.Empty;
+		public bool SyncPreferences { get; set; } = true;
+		public DateTime? LastSyncUtc { get; set; }
 	}
 }

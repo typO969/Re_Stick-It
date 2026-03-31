@@ -10,16 +10,16 @@ namespace StickIt.Sticky.Services
 		// Best-effort “desktop” target: Shell window / Progman / WorkerW
 		public static StickyTargetInfo? TryGetDesktopTarget()
 		{
-			// 1) Shell window (often works)
-			var hwnd = GetShellWindow();
+       // 1) Progman (desktop manager)
+			var hwnd = FindWindow("Progman", null);
 			if (IsGood(hwnd)) return Build(hwnd);
 
-			// 2) Progman
-			hwnd = FindWindow("Progman", null);
-			if (IsGood(hwnd)) return Build(hwnd);
-
-			// 3) WorkerW (common desktop host)
+       // 2) WorkerW (common desktop host)
 			hwnd = FindWindow("WorkerW", null);
+			if (IsGood(hwnd)) return Build(hwnd);
+
+			// 3) Shell window fallback
+			hwnd = GetShellWindow();
 			if (IsGood(hwnd)) return Build(hwnd);
 
 			return null;

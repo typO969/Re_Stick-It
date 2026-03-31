@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
@@ -16,6 +17,7 @@ using System.Windows.Threading;
 
 using StickIt.Converters;
 using StickIt.Models;
+using StickIt.Persistence;
 using StickIt.Services;
 using StickIt.Sticky.Services;
 
@@ -51,6 +53,12 @@ namespace StickIt
       private bool _noteBordersEnabled = true;
       private bool _snapToGridEnabled;
       private bool _snapGridAdjusting;
+      private bool _mode2PreventManualMove = true;
+      private bool _mode2MinimizeWithHost;
+      private bool _mode2CloseNoteWhenHostCloses;
+      private Mode2HostMissingAction _mode2HostMissingAction = Mode2HostMissingAction.SwitchToMode1;
+      private bool _mode2LiftActive;
+      private bool _autoMinimizedByHost;
       private bool _inkModeEnabled;
       private bool _inkEraseModeEnabled;
       private bool _suppressInkChanged;
@@ -87,7 +95,13 @@ namespace StickIt
 
       private System.Windows.Point GetNoteTopLeftPx()
       {
-         return this.PointToScreen(new System.Windows.Point(0, 0));
+         var hwnd = new WindowInteropHelper(this).Handle;
+         if (hwnd != IntPtr.Zero && WindowRectService.TryGetWindowRect(hwnd, out var rect))
+            return new System.Windows.Point(rect.X, rect.Y);
+
+         var dip = PointToScreen(new System.Windows.Point(0, 0));
+         var dpi = VisualTreeHelper.GetDpi(this);
+         return new System.Windows.Point(dip.X * Math.Max(0.01, dpi.DpiScaleX), dip.Y * Math.Max(0.01, dpi.DpiScaleY));
       }
 
       public string? GetInkIsfBase64()
@@ -108,6 +122,68 @@ namespace StickIt
          {
             return null;
          }
+      }
+
+      private bool TryEnterMode2DesktopFallback()
+      {
+         var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
+         if (desk != null && desk.Hwnd != IntPtr.Zero)
+            return EnterStuckMode2WithTarget(desk, allowDesktopFallback: false);
+
+         CenterOnPrimaryScreen();
+         return RevertToNotStuck();
+      }
+
+      private bool RevertToNotStuck()
+      {
+         ApplyStuckMode(0);
+         _stickyTarget = null;
+         _stickyOffsetXPx = null;
+         _stickyOffsetYPx = null;
+         StopHook();
+         AppInstance.QueueSaveFromWindow();
+         return false;
+      }
+
+      [DllImport("user32.dll")]
+      private static extern bool IsWindow(IntPtr hWnd);
+
+      [DllImport("user32.dll")]
+      private static extern bool IsIconic(IntPtr hWnd);
+
+      private bool IsNoteVisibleOnAnyScreen()
+      {
+         var hwnd = new WindowInteropHelper(this).Handle;
+         if (hwnd == IntPtr.Zero || !WindowRectService.TryGetWindowRect(hwnd, out var rect))
+            return true;
+
+         var noteRect = new System.Drawing.Rectangle(
+            (int)Math.Round(rect.X),
+            (int)Math.Round(rect.Y),
+            (int)Math.Max(1, Math.Round(rect.Width)),
+            (int)Math.Max(1, Math.Round(rect.Height)));
+
+         return System.Windows.Forms.Screen.AllScreens.Any(s =>
+            System.Drawing.Rectangle.Intersect(noteRect, s.Bounds).Width > 20
+            && System.Drawing.Rectangle.Intersect(noteRect, s.Bounds).Height > 20);
+      }
+
+      private void CenterOnPrimaryScreen()
+      {
+         var wa = System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea
+                  ?? System.Windows.Forms.SystemInformation.VirtualScreen;
+
+         var dpi = VisualTreeHelper.GetDpi(this);
+         var scaleX = Math.Max(0.01, dpi.DpiScaleX);
+         var scaleY = Math.Max(0.01, dpi.DpiScaleY);
+
+         var waLeftDip = wa.Left / scaleX;
+         var waTopDip = wa.Top / scaleY;
+         var waWidthDip = wa.Width / scaleX;
+         var waHeightDip = wa.Height / scaleY;
+
+         Left = waLeftDip + ((waWidthDip - Width) / 2.0);
+         Top = waTopDip + ((waHeightDip - Height) / 2.0);
       }
 
       public void SetInkIsfBase64(string? inkIsfBase64)
@@ -253,7 +329,7 @@ namespace StickIt
          _followTimer.Tick += (_, __) =>
          {
             if (_noteStuckMode == 2)
-               SnapToStickyTargetNow();
+               TickMode2Follow();
          };
          _followTimer.Start();
 
@@ -320,7 +396,8 @@ namespace StickIt
          };
 
 
-         ControlBar.MouseLeftButtonDown += (_, __) => DragMove();
+         ControlBar.MouseLeftButtonDown += ControlBar_MouseLeftButtonDown;
+         btnMinimize.PreviewMouseLeftButtonDown += BtnMinimize_PreviewMouseLeftButtonDown;
 
          KeyDown += (_, e) =>
          {
@@ -359,6 +436,9 @@ namespace StickIt
                      return;
 
                   case Key.M:
+                     if (_noteStuckMode == 2)
+                        return;
+
                      WindowState = WindowState.Minimized;
                      AppInstance.QueueSaveFromWindow();
                      e.Handled = true;
@@ -861,12 +941,15 @@ namespace StickIt
 
       private void btnMinimize_Click(object sender, RoutedEventArgs e)
       {
+         if (_noteStuckMode == 2)
+            return;
+
          WindowState = WindowState.Minimized;
       }
 
       private void btnPinCycle_Click(object sender, RoutedEventArgs e)
       {
-         // Cycle: 0 -> 1 -> 2 -> 0 ...
+         // Cycle: 0 -> 1 -> 2 -> 0
          var next = (_noteStuckMode + 1) % 3;
 
          if (next == 2)
@@ -874,26 +957,7 @@ namespace StickIt
             if (StickToWindowUnderMe())
                return;
 
-            var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
-            if (dlg.ShowDialog() == true && dlg.SelectedTarget != null)
-            {
-               EnterStuckMode2WithTarget(dlg.SelectedTarget);
-               return;
-            }
-
-            var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
-            if (desk != null)
-            {
-               EnterStuckMode2WithTarget(desk);
-               return;
-            }
-
-            ApplyStuckMode(0);
-            _stickyTarget = null;
-            _stickyOffsetXPx = null;
-            _stickyOffsetYPx = null;
-            StopHook();
-            AppInstance.QueueSaveFromWindow();
+            TryEnterMode2DesktopFallback();
             return;
          }
 
@@ -1062,6 +1126,9 @@ namespace StickIt
 
       private void Menu_Minimize(object sender, RoutedEventArgs e)
       {
+         if (_noteStuckMode == 2)
+            return;
+
          SetIsMinimized(true);
          AppInstance.QueueSaveFromWindow();
       }
@@ -1102,6 +1169,14 @@ namespace StickIt
       private void Menu_SaveNow(object sender, RoutedEventArgs e)
       {
          AppInstance.QueueSaveFromWindow(); // triggers debounce
+      }
+
+      private void Menu_SyncNow(object sender, RoutedEventArgs e)
+      {
+         if (AppInstance.TrySyncNow(out var message))
+          System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+         else
+           System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
       }
 
       private void Menu_MinimizeAll(object sender, RoutedEventArgs e)
@@ -1323,7 +1398,8 @@ namespace StickIt
          var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
          if (dlg.ShowDialog() != true || dlg.SelectedTarget == null) return;
 
-         EnterStuckMode2WithTarget(dlg.SelectedTarget);
+         if (!EnterStuckMode2WithTarget(dlg.SelectedTarget, allowDesktopFallback: true))
+            TryEnterMode2DesktopFallback();
       }
 
       public bool SnapToStickyTargetNow()
@@ -1363,11 +1439,16 @@ namespace StickIt
          int newX = (int)(tr.X + (int)Math.Round(_stickyOffsetXPx.Value));
          int newY = (int)(tr.Y + (int)Math.Round(_stickyOffsetYPx.Value));
 
-         // Clamp to virtual desktop so it can’t “disappear”
-         int minX = (int)SystemParameters.VirtualScreenLeft;
-         int minY = (int)SystemParameters.VirtualScreenTop;
-         int maxX = (int)(SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - this.Width);
-         int maxY = (int)(SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - this.Height);
+         // Clamp to virtual desktop in physical pixels so it can’t disappear
+         var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
+         var dpi = VisualTreeHelper.GetDpi(this);
+         var noteWidthPx = (int)Math.Round(Math.Max(1, Width * Math.Max(0.01, dpi.DpiScaleX)));
+         var noteHeightPx = (int)Math.Round(Math.Max(1, Height * Math.Max(0.01, dpi.DpiScaleY)));
+
+         int minX = vs.Left;
+         int minY = vs.Top;
+         int maxX = vs.Right - noteWidthPx;
+         int maxY = vs.Bottom - noteHeightPx;
 
          if (newX < minX) newX = minX;
          if (newY < minY) newY = minY;
@@ -1375,12 +1456,25 @@ namespace StickIt
          if (newY > maxY) newY = maxY;
 
          var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+         var insertAfter = IsDesktopLikeTarget(_stickyTarget) ? IntPtr.Zero : _stickyTarget.Hwnd;
 
          // IMPORTANT: insert-after = target hwnd, so we stay above it without being Topmost
-         WindowMoveService.MoveWindow(myHwnd, newX, newY, _stickyTarget.Hwnd);
+         WindowMoveService.MoveWindow(myHwnd, newX, newY, insertAfter);
 
 
          return true;
+      }
+
+      private static bool IsDesktopLikeTarget(StickIt.Sticky.StickyTargetInfo? target)
+      {
+         if (target == null)
+            return false;
+
+         var cls = target.ClassName?.Trim();
+         return string.Equals(cls, "Progman", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(cls, "WorkerW", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(cls, "#32769", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(cls, "Desktop", StringComparison.OrdinalIgnoreCase);
       }
 
 
@@ -1515,21 +1609,30 @@ namespace StickIt
       {
          var target = TryGetTargetWindowUnderNote();
          if (target == null)
-            return false;
+            return TryEnterMode2DesktopFallback();
 
-         EnterStuckMode2WithTarget(target);
-         return true;
+         return EnterStuckMode2WithTarget(target, allowDesktopFallback: true);
       }
 
 
 
 
-      private void EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target)
+      private bool EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target, bool allowDesktopFallback)
       {
+         if (target == null || target.Hwnd == IntPtr.Zero)
+            return allowDesktopFallback ? TryEnterMode2DesktopFallback() : RevertToNotStuck();
+
+         try
+         {
          _stickyTarget = target;
 
+         var isDesktopTarget = IsDesktopLikeTarget(target);
+
          // LOCAL AOT: make note owned by target (stays above target, not globally TopMost)
-         ApplyLocalAotOwner(target.Hwnd);
+         if (isDesktopTarget)
+            ClearLocalAotOwner();
+         else
+            ApplyLocalAotOwner(target.Hwnd);
 
          StuckMode = 2;
          Topmost = false;
@@ -1539,17 +1642,42 @@ namespace StickIt
          _lastTargetX = null;
          _lastTargetY = null;
 
-         EnsureHookForStickyTarget();
+         if (isDesktopTarget)
+            StopHook();
+         else
+            EnsureHookForStickyTarget();
          UpdateStickyVisuals();
 
          // ONE-SHOT snap so user sees it stick immediately and z-order is corrected.
          var ok = SnapToStickyTargetNow();
 
+         if (ok)
+            ok = IsNoteVisibleOnAnyScreen();
+
          // TEMP: set the menu item header so you can see success without breakpoints
          if (miSticky_SnapNow != null)
             miSticky_SnapNow.Header = ok ? "Snap to target now (OK)" : "Snap to target now (FAILED)";
 
+         if (!ok)
+         {
+            if (allowDesktopFallback)
+               return TryEnterMode2DesktopFallback();
+
+            CenterOnPrimaryScreen();
+            return RevertToNotStuck();
+         }
+
          AppInstance.QueueSaveFromWindow();
+         return true;
+         }
+         catch
+         {
+            if (allowDesktopFallback)
+               return TryEnterMode2DesktopFallback();
+
+            CenterOnPrimaryScreen();
+            return RevertToNotStuck();
+         }
       }
 
 
@@ -1559,40 +1687,57 @@ namespace StickIt
 
       private void Sticky_Auto_Click(object sender, RoutedEventArgs e)
       {
-         // Get a target by hit test (no side effects)
-         var t = TryGetTargetWindowUnderNote(); // (we’ll implement/fix next)
-         if (t == null)
+         var t = TryGetTargetWindowUnderNote();
+         if (t != null)
          {
-            var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
-            if (desk != null)
-               EnterStuckMode2WithTarget(desk);
-            return;
+            if (EnterStuckMode2WithTarget(t, allowDesktopFallback: true))
+               return;
          }
 
-         EnterStuckMode2WithTarget(t);
+         TryEnterMode2DesktopFallback();
       }
       private void Sticky_Pick_Click(object sender, RoutedEventArgs e)
       {
          var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
          if (dlg.ShowDialog() == true && dlg.SelectedTarget != null)
          {
-            EnterStuckMode2WithTarget(dlg.SelectedTarget);
+            if (EnterStuckMode2WithTarget(dlg.SelectedTarget, allowDesktopFallback: true))
+               return;
          }
+
+         TryEnterMode2DesktopFallback();
       }
       private StickIt.Sticky.StickyTargetInfo? TryGetTargetWindowUnderNote()
       {
-         // Pick a point inside the note (client area), expressed in SCREEN PIXELS.
-         // Using PointToScreen keeps us consistent with your pixel-only sticky math.
-         var pt = PointToScreen(new System.Windows.Point(24, 48)); // small inset from top-left
-         int x = (int)Math.Round(pt.X);
-         int y = (int)Math.Round(pt.Y);
-
          var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+         var noteTopLeftPx = GetNoteTopLeftPx();
+         var dpi = VisualTreeHelper.GetDpi(this);
 
-         return StickIt.Sticky.Services.StickyHitTestService.GetTopmostWindowUnderPoint(
-            x, y,
-            System.Diagnostics.Process.GetCurrentProcess().Id,
-            myHwnd);
+         var samplePoints = new[]
+         {
+            new System.Windows.Point(Math.Max(24, Width * 0.50), Math.Max(48, Height * 0.50)),
+            new System.Windows.Point(24, 48),
+            new System.Windows.Point(Math.Max(24, Width - 24), 48),
+            new System.Windows.Point(24, Math.Max(48, Height - 24)),
+            new System.Windows.Point(Math.Max(24, Width - 24), Math.Max(48, Height - 24))
+         };
+
+         foreach (var sample in samplePoints)
+         {
+            int x = (int)Math.Round(noteTopLeftPx.X + (sample.X * Math.Max(0.01, dpi.DpiScaleX)));
+            int y = (int)Math.Round(noteTopLeftPx.Y + (sample.Y * Math.Max(0.01, dpi.DpiScaleY)));
+
+            var target = StickIt.Sticky.Services.StickyHitTestService.GetTopmostWindowUnderPoint(
+               x,
+               y,
+               System.Diagnostics.Process.GetCurrentProcess().Id,
+               myHwnd);
+
+            if (target != null)
+               return target;
+         }
+
+         return null;
       }
 
 
@@ -1663,6 +1808,216 @@ namespace StickIt
          _inkToolbarWindow?.SetThickness(_inkThicknessLevel);
       }
 
+      private void SetLiftVisualState(bool active)
+      {
+         if (btnPin == null)
+            return;
+
+         if (!active)
+         {
+            btnPin.ClearValue(System.Windows.Controls.Button.BackgroundProperty);
+            btnPin.ClearValue(System.Windows.Controls.Button.BorderBrushProperty);
+            btnPin.ClearValue(System.Windows.Controls.Button.ForegroundProperty);
+            return;
+         }
+
+         var baseColor = GetCurrentNotePaperColor();
+         var highlight = GetContrastingLiftColor(baseColor);
+         var fg = GetPerceivedLuminance(highlight) >= 140 ? Colors.Black : Colors.White;
+
+         btnPin.Background = new SolidColorBrush(highlight);
+         btnPin.BorderBrush = new SolidColorBrush(highlight);
+         btnPin.Foreground = new SolidColorBrush(fg);
+      }
+
+      private System.Windows.Media.Color GetCurrentNotePaperColor()
+      {
+         if (_note == null)
+            return System.Windows.Media.Colors.Yellow;
+
+         var baseHex = NoteColors.Hex[_note.ColorKey];
+         try
+         {
+            return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(baseHex);
+         }
+         catch
+         {
+            return System.Windows.Media.Colors.Yellow;
+         }
+      }
+
+      private static System.Windows.Media.Color GetContrastingLiftColor(System.Windows.Media.Color baseColor)
+      {
+         int r = 255 - baseColor.R;
+         int g = 255 - baseColor.G;
+         int b = 255 - baseColor.B;
+
+         var max = Math.Max(r, Math.Max(g, b));
+         if (max > 0 && max < 180)
+         {
+            var scale = 180.0 / max;
+            r = (int)Math.Min(255, r * scale);
+            g = (int)Math.Min(255, g * scale);
+            b = (int)Math.Min(255, b * scale);
+         }
+
+         var candidate = System.Windows.Media.Color.FromRgb((byte)r, (byte)g, (byte)b);
+         if (Math.Abs(GetPerceivedLuminance(candidate) - GetPerceivedLuminance(baseColor)) < 70)
+            return GetPerceivedLuminance(baseColor) >= 140
+               ? System.Windows.Media.Color.FromRgb(0, 120, 255)
+               : System.Windows.Media.Color.FromRgb(255, 220, 0);
+
+         return candidate;
+      }
+
+      private static double GetPerceivedLuminance(System.Windows.Media.Color color)
+      {
+         return (0.2126 * color.R) + (0.7152 * color.G) + (0.0722 * color.B);
+      }
+
+      private void ControlBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+      {
+         if (e.ChangedButton != MouseButton.Left)
+            return;
+
+         if (_noteStuckMode == 2 && _mode2PreventManualMove && !_mode2LiftActive)
+            return;
+
+         DragMove();
+      }
+
+      private void BtnMinimize_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+      {
+         if (_noteStuckMode != 2)
+            return;
+
+         e.Handled = true;
+
+         _mode2LiftActive = true;
+         SetLiftVisualState(true);
+         try
+         {
+            DragMove();
+         }
+         finally
+         {
+            _mode2LiftActive = false;
+            SetLiftVisualState(false);
+            RecalculateStickyOffsetFromCurrentPosition();
+            SnapToStickyTargetNow();
+         }
+      }
+
+      private void TickMode2Follow()
+      {
+         if (_noteStuckMode != 2)
+            return;
+
+         if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
+         {
+            if (!TryRebindStickyTarget())
+               HandleMode2Failure(hostMissing: true);
+            return;
+         }
+
+         if (!IsWindow(_stickyTarget.Hwnd))
+         {
+            HandleMode2Failure(hostMissing: true);
+            return;
+         }
+
+         if (_mode2MinimizeWithHost && IsIconic(_stickyTarget.Hwnd))
+         {
+            if (WindowState != WindowState.Minimized)
+            {
+               _autoMinimizedByHost = true;
+               WindowState = WindowState.Minimized;
+            }
+            return;
+         }
+
+         if (_autoMinimizedByHost && WindowState == WindowState.Minimized && !IsIconic(_stickyTarget.Hwnd))
+         {
+            WindowState = WindowState.Normal;
+            _autoMinimizedByHost = false;
+         }
+
+         if (!SnapToStickyTargetNow())
+            HandleMode2Failure(hostMissing: false);
+      }
+
+      private void RecalculateStickyOffsetFromCurrentPosition()
+      {
+         if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
+            return;
+
+         if (!WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+            return;
+
+         var notePx = GetNoteTopLeftPx();
+         _stickyOffsetXPx = notePx.X - tr.X;
+         _stickyOffsetYPx = notePx.Y - tr.Y;
+         _lastTargetX = null;
+         _lastTargetY = null;
+      }
+
+      private void ClampMode2LiftToHostBounds()
+      {
+         if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
+            return;
+
+         if (!WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
+            return;
+
+         var dpi = VisualTreeHelper.GetDpi(this);
+         var sx = Math.Max(0.01, dpi.DpiScaleX);
+         var sy = Math.Max(0.01, dpi.DpiScaleY);
+
+         var hostLeft = tr.X / sx;
+         var hostTop = tr.Y / sy;
+         var hostWidth = tr.Width / sx;
+         var hostHeight = tr.Height / sy;
+
+         var minLeft = hostLeft;
+         var minTop = hostTop;
+         var maxLeft = hostLeft + Math.Max(0, hostWidth - Width);
+         var maxTop = hostTop + Math.Max(0, hostHeight - Height);
+
+         Left = Math.Max(minLeft, Math.Min(maxLeft, Left));
+         Top = Math.Max(minTop, Math.Min(maxTop, Top));
+      }
+
+      private void HandleMode2Failure(bool hostMissing)
+      {
+         if (hostMissing && _mode2CloseNoteWhenHostCloses)
+         {
+            Close();
+            return;
+         }
+
+         switch (_mode2HostMissingAction)
+         {
+            case Mode2HostMissingAction.StickToDesktop:
+               if (TryEnterMode2DesktopFallback())
+                  return;
+               break;
+            case Mode2HostMissingAction.SwitchToMode0:
+               RevertToNotStuck();
+               return;
+            case Mode2HostMissingAction.SwitchToMode1:
+            default:
+               ApplyStuckMode(1);
+               _stickyTarget = null;
+               _stickyOffsetXPx = null;
+               _stickyOffsetYPx = null;
+               StopHook();
+               AppInstance.QueueSaveFromWindow();
+               return;
+         }
+
+         RevertToNotStuck();
+      }
+
       private void Sticky_NotStuck_Click(object sender, RoutedEventArgs e)
       {
          ApplyStuckMode(0);
@@ -1689,7 +2044,7 @@ namespace StickIt
             return;
 
          // 1) Try persisted target rebind
-         if (TryRebindStickyTarget())
+         if (TryRebindStickyTarget() && SnapToStickyTargetNow() && IsNoteVisibleOnAnyScreen())
             return;
 
          // 2) If that fails, try “window under note”
@@ -1697,20 +2052,11 @@ namespace StickIt
             return;
 
          // 3) Desktop fallback
-         var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
-         if (desk != null)
-         {
-            EnterStuckMode2WithTarget(desk);
+         if (TryEnterMode2DesktopFallback())
             return;
-         }
 
-         // 4) Last resort: mode 0
-         ApplyStuckMode(0);
-         _stickyTarget = null;
-         _stickyOffsetXPx = null;
-         _stickyOffsetYPx = null;
-         StopHook();
-         AppInstance.QueueSaveFromWindow();
+         // 4) Last resort
+         RevertToNotStuck();
       }
 
 
@@ -1804,6 +2150,10 @@ namespace StickIt
          _dropShadowEnabled = prefs.EnableDropShadow;
          _noteBordersEnabled = prefs.EnableNoteBorders;
          _snapToGridEnabled = prefs.SnapNotesToGrid;
+         _mode2PreventManualMove = prefs.Mode2PreventManualMove;
+         _mode2MinimizeWithHost = prefs.Mode2MinimizeWithHost;
+         _mode2CloseNoteWhenHostCloses = prefs.Mode2CloseNoteWhenHostCloses;
+         _mode2HostMissingAction = prefs.Mode2HostMissingAction;
 
          if (txtNoteTitle != null)
          {
@@ -1844,6 +2194,19 @@ namespace StickIt
 
       private void NoteWindow_LocationChanged(object? sender, EventArgs e)
       {
+         if (_noteStuckMode == 2 && _mode2PreventManualMove)
+         {
+            if (_mode2LiftActive)
+            {
+               ClampMode2LiftToHostBounds();
+               RecalculateStickyOffsetFromCurrentPosition();
+            }
+            else
+            {
+               SnapToStickyTargetNow();
+            }
+         }
+
          if (_inkToolbarSnapEnabled && _inkModeEnabled && WindowState != WindowState.Minimized)
             PositionInkToolbar();
 

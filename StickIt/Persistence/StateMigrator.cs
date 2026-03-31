@@ -95,6 +95,11 @@ namespace StickIt.Persistence
 				prefs.DesktopAreaWidth = null;
 			if (prefs.DesktopAreaHeight is not null && prefs.DesktopAreaHeight <= 0)
 				prefs.DesktopAreaHeight = null;
+
+			if (!Enum.IsDefined(typeof(Mode2HostMissingAction), prefs.Mode2HostMissingAction))
+				prefs.Mode2HostMissingAction = Mode2HostMissingAction.SwitchToMode1;
+
+			prefs.SyncFilePath ??= string.Empty;
 		}
 	}
 }
