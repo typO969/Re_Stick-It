@@ -14,6 +14,7 @@
    <Grid Margin="12" Background="{DynamicResource AppBackgroundBrush}">
       <Grid.RowDefinitions>
          <RowDefinition Height="Auto" />
+         <RowDefinition Height="Auto" />
          <RowDefinition Height="*" />
          <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
@@ -24,9 +25,21 @@
          FontWeight="SemiBold"
          Text="Note manager" />
 
+      <GroupBox Grid.Row="1" Margin="0,0,0,10" Header="Saving/Loading">
+         <WrapPanel Margin="10">
+            <Button MinWidth="95" Margin="0,0,8,8" Click="AddNote_Click" Content="Add note" />
+            <Button MinWidth="110" Margin="0,0,8,8" Click="SaveNotesNow_Click" Content="Save notes now" />
+            <Button MinWidth="95" Margin="0,0,8,8" Click="SyncNow_Click" Content="Sync now" />
+            <Button MinWidth="95" Margin="0,0,8,8" Click="PullNow_Click" Content="Pull now" />
+            <Button MinWidth="95" Margin="0,0,8,8" Click="PushNow_Click" Content="Push now" />
+            <Button MinWidth="110" Margin="0,0,8,8" Click="ExportSelected_Click" Content="Export selected" />
+            <Button MinWidth="125" Margin="0,0,8,8" Click="LoadIntoSelected_Click" Content="Load into selected" />
+         </WrapPanel>
+      </GroupBox>
+
       <DataGrid
          x:Name="NotesGrid"
-         Grid.Row="1"
+         Grid.Row="2"
          Background="{DynamicResource AppPanelBrush}"
          BorderBrush="{DynamicResource AppBorderBrush}"
          Foreground="{DynamicResource AppForegroundBrush}"
@@ -56,7 +69,7 @@
          </DataGrid.Columns>
       </DataGrid>
 
-      <StackPanel Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+      <StackPanel Grid.Row="3" Margin="0,10,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
          <Button MinWidth="90" Margin="0,0,8,0" Click="Refresh_Click" Content="Refresh" />
          <Button MinWidth="90" Click="Done_Click" Content="Done" IsDefault="True" />
       </StackPanel>

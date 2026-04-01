@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -51,9 +52,21 @@ namespace StickIt
       private static double DipToPoints(double dip) => dip * 72.0 / 96.0;
 
       private bool _suppressTextChanged;
+      private bool _suppressAutoListHandling;
       private bool _dropShadowEnabled = true;
       private bool _noteBordersEnabled = true;
       private bool _snapToGridEnabled;
+      private bool _externalNoteImportExportEnabled;
+      private bool _autoListFormattingEnabled;
+      private string _autoListBulletSymbol = "•";
+      private int _autoListSpacesAfterMarker = 1;
+      private string _autoListNumberSuffix = ".";
+      private string _autoListBulletTemplateRtf = string.Empty;
+      private string _autoListNumberTemplateRtf = string.Empty;
+      private bool _enableTodoTitleTrigger;
+      private bool _todoTitleArmed;
+      private bool _todoTemplateApplied;
+      private AutoBulletPairState? _lastAutoBulletPair;
       private bool _snapGridAdjusting;
       private bool _mode2PreventManualMove = true;
       private bool _mode2MinimizeWithHost;
@@ -83,6 +96,64 @@ namespace StickIt
          Right,
          Top,
          Bottom
+      }
+
+      private void TxtNoteContent_TextChanged(object sender, TextChangedEventArgs e)
+      {
+         if (_suppressTextChanged)
+            return;
+
+         CleanupStrikethroughOnEmptyParagraphs();
+
+         if (_autoListFormattingEnabled)
+            TryApplyAutomaticListFormatting();
+
+         NoteTextChanged?.Invoke(this, EventArgs.Empty);
+      }
+
+      private void TxtNoteTitle_TextChanged(object sender, TextChangedEventArgs e)
+      {
+         if (!_enableTodoTitleTrigger || _note == null)
+            return;
+
+         var title = txtNoteTitle?.Text ?? string.Empty;
+         var hasTodoKeyword = title.Contains("TODO", StringComparison.OrdinalIgnoreCase);
+
+         if (!hasTodoKeyword)
+         {
+            _todoTemplateApplied = false;
+            return;
+         }
+
+         if (_todoTemplateApplied)
+            return;
+
+         if (!string.IsNullOrWhiteSpace(GetText()))
+            return;
+
+         var spaces = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
+         SetText($"{_autoListBulletSymbol}{spaces}[ ] Task 1\n{_autoListBulletSymbol}{spaces}[ ] Task 2\n{_autoListBulletSymbol}{spaces}[ ] Task 3");
+         _todoTemplateApplied = true;
+         AppInstance.QueueTextSaveFromWindow();
+      }
+
+      private sealed class AutoBulletPairState
+      {
+         public Paragraph? First { get; init; }
+         public Paragraph? Second { get; init; }
+         public char Marker { get; init; }
+      }
+
+      private sealed class ListTemplateStyle
+      {
+         public System.Windows.Media.FontFamily FontFamily { get; set; } = new System.Windows.Media.FontFamily("Segoe UI");
+         public double FontSize { get; set; } = 14d;
+         public FontWeight FontWeight { get; set; } = FontWeights.Normal;
+        public System.Windows.FontStyle FontStyle { get; set; } = FontStyles.Normal;
+         public TextDecorationCollection? TextDecorations { get; set; }
+       public System.Windows.Media.Brush? Foreground { get; set; }
+         public Thickness Margin { get; set; } = new Thickness(0);
+         public double TextIndent { get; set; }
       }
 
 
@@ -360,6 +431,16 @@ namespace StickIt
 
          txtNoteContent.PreviewKeyDown += (s, e) =>
          {
+            if (e.Key == Key.Enter
+               && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt)) == ModifierKeys.None)
+            {
+               if (TryPropagateListMarkerOnEnter())
+               {
+                  e.Handled = true;
+                  return;
+               }
+            }
+
             var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
             if (ctrl && (e.Key == Key.Z || e.Key == Key.Y))
                NoteUndoRedoRequested?.Invoke(this, EventArgs.Empty);
@@ -393,11 +474,8 @@ namespace StickIt
          ConfigureInkLayer();
 
          // Keep autosave behavior consistent regardless of constructor use
-         txtNoteContent.TextChanged += (_, __) =>
-         {
-            if (_suppressTextChanged) return;
-            NoteTextChanged?.Invoke(this, EventArgs.Empty);
-         };
+        txtNoteContent.TextChanged += TxtNoteContent_TextChanged;
+         txtNoteTitle.TextChanged += TxtNoteTitle_TextChanged;
 
 
          ControlBar.MouseLeftButtonDown += ControlBar_MouseLeftButtonDown;
@@ -1131,9 +1209,23 @@ namespace StickIt
 
       private void txtNoteContent_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
       {
+         txtNoteContent.Focus();
+
+         var clickPoint = e.GetPosition(txtNoteContent);
+         var textPosition = txtNoteContent.GetPositionFromPoint(clickPoint, true);
+         if (textPosition != null)
+         {
+            txtNoteContent.CaretPosition = textPosition;
+            txtNoteContent.Selection.Select(textPosition, textPosition);
+         }
+
          e.Handled = true;
-         if (this.Content is FrameworkElement fe && fe.ContextMenu != null)
-            fe.ContextMenu.IsOpen = true;
+
+         if (NoteChrome?.ContextMenu != null)
+         {
+            NoteChrome.ContextMenu.PlacementTarget = txtNoteContent;
+            NoteChrome.ContextMenu.IsOpen = true;
+         }
       }
 
 
@@ -1209,6 +1301,54 @@ namespace StickIt
       private void Menu_Copy(object sender, RoutedEventArgs e) => txtNoteContent.Copy();
       private void Menu_Paste(object sender, RoutedEventArgs e) => txtNoteContent.Paste();
 
+      private void Menu_TaskCompleted(object sender, RoutedEventArgs e)
+      {
+         var paragraph = txtNoteContent.CaretPosition?.Paragraph ?? txtNoteContent.Selection.Start?.Paragraph;
+         if (paragraph == null)
+         {
+            ToggleStrikethrough();
+            return;
+         }
+
+         var range = GetParagraphContentRange(paragraph);
+         var decorations = GetDecorationsOrEmpty(range.GetPropertyValue(Inline.TextDecorationsProperty));
+
+         if (HasDecorationLocation(decorations, TextDecorationLocation.Strikethrough))
+            RemoveDecorationLocation(decorations, TextDecorationLocation.Strikethrough);
+         else
+         {
+            foreach (var d in TextDecorations.Strikethrough)
+               decorations.Add(d.Clone());
+         }
+
+         range.ApplyPropertyValue(Inline.TextDecorationsProperty, decorations.Count == 0 ? null : decorations);
+
+         var caret = range.End.GetInsertionPosition(LogicalDirection.Forward) ?? range.End;
+         txtNoteContent.Selection.Select(caret, caret);
+         new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+
+         NoteTextChanged?.Invoke(this, EventArgs.Empty);
+      }
+
+      private void NoteContextMenu_Opened(object sender, RoutedEventArgs e)
+      {
+         if (miExportNote != null)
+            miExportNote.IsEnabled = _externalNoteImportExportEnabled;
+
+         if (miImportNote != null)
+            miImportNote.IsEnabled = _externalNoteImportExportEnabled;
+      }
+
+      public void ExportNoteFromManager()
+      {
+         Menu_ExportNote(this, new RoutedEventArgs());
+      }
+
+      public void ImportNoteFromManager()
+      {
+         Menu_ImportNote(this, new RoutedEventArgs());
+      }
+
       private void Menu_SaveNow(object sender, RoutedEventArgs e)
       {
          AppInstance.QueueSaveFromWindow(); // triggers debounce
@@ -1236,6 +1376,70 @@ namespace StickIt
           System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Information);
          else
            System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+
+      private void Menu_ExportNote(object sender, RoutedEventArgs e)
+      {
+         if (!_externalNoteImportExportEnabled)
+         {
+            System.Windows.MessageBox.Show(this, "Enable external note import/export in Preferences > Note first.", "Export note", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+         }
+
+         var dlg = new Microsoft.Win32.SaveFileDialog
+         {
+            Title = "Export note",
+            Filter = "StickIt note (*.3n)|*.3n|JSON file (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = ".3n",
+            AddExtension = true,
+            FileName = $"{GetTitle().Trim().Replace(' ', '_')}.3n"
+         };
+
+         if (dlg.ShowDialog(this) != true)
+            return;
+
+         try
+         {
+            var note = NotePersistMapper.FromWindow(this, GetStuckMode(), DateTime.UtcNow);
+            ExternalNoteStore.Save(dlg.FileName, note);
+            System.Windows.MessageBox.Show(this, "Note exported successfully.", "Export note", MessageBoxButton.OK, MessageBoxImage.Information);
+         }
+         catch (Exception ex)
+         {
+            System.Windows.MessageBox.Show(this, $"Export failed: {ex.Message}", "Export note", MessageBoxButton.OK, MessageBoxImage.Warning);
+         }
+      }
+
+      private void Menu_ImportNote(object sender, RoutedEventArgs e)
+      {
+         if (!_externalNoteImportExportEnabled)
+         {
+            System.Windows.MessageBox.Show(this, "Enable external note import/export in Preferences > Note first.", "Load note", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+         }
+
+         var dlg = new Microsoft.Win32.OpenFileDialog
+         {
+            Title = "Load external note",
+            Filter = "StickIt note (*.3n;*.json)|*.3n;*.json|All files (*.*)|*.*",
+            CheckFileExists = true
+         };
+
+         if (dlg.ShowDialog(this) != true)
+            return;
+
+         try
+         {
+            var imported = ExternalNoteStore.Load(dlg.FileName);
+            if (AppInstance.TryImportExternalNote(imported, AppInstance.Preferences.SyncImportMode, this, out var message))
+               System.Windows.MessageBox.Show(this, message, "Load note", MessageBoxButton.OK, MessageBoxImage.Information);
+            else
+               System.Windows.MessageBox.Show(this, message, "Load note", MessageBoxButton.OK, MessageBoxImage.Warning);
+         }
+         catch (Exception ex)
+         {
+            System.Windows.MessageBox.Show(this, $"Load failed: {ex.Message}", "Load note", MessageBoxButton.OK, MessageBoxImage.Warning);
+         }
       }
 
       private void Menu_MinimizeAll(object sender, RoutedEventArgs e)
@@ -2204,11 +2408,392 @@ namespace StickIt
          }
       }
 
+      private void TryApplyAutomaticListFormatting()
+      {
+         if (_suppressAutoListHandling || txtNoteContent == null)
+            return;
+
+         var current = txtNoteContent.CaretPosition?.Paragraph;
+         var previous = current?.PreviousBlock as Paragraph;
+         if (current == null || previous == null)
+            return;
+
+         if (TryHandleBulletRevert(previous, current))
+            return;
+
+         if (TryFormatBulletPair(previous, current))
+            return;
+
+         TryFormatNumberPair(previous, current);
+      }
+
+      private bool TryPropagateListMarkerOnEnter()
+      {
+         if (!_autoListFormattingEnabled || txtNoteContent == null)
+            return false;
+
+         var current = txtNoteContent.CaretPosition?.Paragraph;
+         if (current == null)
+            return false;
+
+         var text = GetParagraphText(current);
+         var spacing = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
+
+         string? nextPrefix = null;
+         bool isNumbered = false;
+
+         if (TryParseFormattedBulletLine(text, out var bulletIndent, out _))
+         {
+            nextPrefix = $"{bulletIndent}{_autoListBulletSymbol}{spacing}";
+         }
+         else if (TryParseFormattedNumberLine(text, out var numberIndent, out var currentNumber, out _))
+         {
+            nextPrefix = $"{numberIndent}{currentNumber + 1}{_autoListNumberSuffix}{spacing}";
+            isNumbered = true;
+         }
+
+         if (nextPrefix == null)
+            return false;
+
+         _suppressAutoListHandling = true;
+         try
+         {
+            EditingCommands.EnterParagraphBreak.Execute(null, txtNoteContent);
+
+            var next = txtNoteContent.CaretPosition?.Paragraph;
+            if (next == null)
+               return true;
+
+            SetParagraphText(next, nextPrefix, isNumbered);
+
+            var caret = next.ContentEnd.GetInsertionPosition(LogicalDirection.Backward) ?? next.ContentEnd;
+            txtNoteContent.Selection.Select(caret, caret);
+            new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+         }
+         finally
+         {
+            _suppressAutoListHandling = false;
+         }
+
+         return true;
+      }
+
+      private bool TryHandleBulletRevert(Paragraph previous, Paragraph current)
+      {
+         if (_lastAutoBulletPair?.First != previous || _lastAutoBulletPair.Second != current)
+            return false;
+
+         var currentText = GetParagraphText(current);
+         if (currentText.StartsWith(_autoListBulletSymbol, StringComparison.Ordinal))
+            return false;
+
+         var marker = _lastAutoBulletPair.Marker;
+         var spacing = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
+         SetParagraphText(previous, $"{marker}{spacing}{StripBulletPrefix(GetParagraphText(previous))}", isNumbered: false);
+         SetParagraphText(current, $"{marker}{spacing}{StripBulletPrefix(currentText)}", isNumbered: false);
+         _lastAutoBulletPair = null;
+         return true;
+      }
+
+      private bool TryFormatBulletPair(Paragraph previous, Paragraph current)
+      {
+         if (!TryParseBulletTrigger(GetParagraphText(previous), out var prevIndent, out var prevMarker, out var prevContent))
+            return false;
+
+         if (!TryParseBulletTrigger(GetParagraphText(current), out var currIndent, out var currMarker, out var currContent))
+            return false;
+
+         if (prevMarker != currMarker || !string.Equals(prevIndent, currIndent, StringComparison.Ordinal))
+            return false;
+
+         var spacing = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
+         var p1 = $"{prevIndent}{_autoListBulletSymbol}{spacing}{prevContent}";
+         var p2 = $"{currIndent}{_autoListBulletSymbol}{spacing}{currContent}";
+
+         SetParagraphText(previous, p1, isNumbered: false);
+         SetParagraphText(current, p2, isNumbered: false);
+         _lastAutoBulletPair = new AutoBulletPairState { First = previous, Second = current, Marker = prevMarker };
+         if (_todoTitleArmed)
+         {
+            _todoTemplateApplied = true;
+            _todoTitleArmed = false;
+         }
+         return true;
+      }
+
+      private bool TryFormatNumberPair(Paragraph previous, Paragraph current)
+      {
+         var prevText = GetParagraphText(previous);
+         var currText = GetParagraphText(current);
+
+         if (TryParseHashTrigger(prevText, out var prevHashIndent, out var prevHashContent)
+            && TryParseHashTrigger(currText, out var currHashIndent, out var currHashContent)
+            && string.Equals(prevHashIndent, currHashIndent, StringComparison.Ordinal))
+         {
+            var spacingHash = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
+            SetParagraphText(previous, $"{prevHashIndent}1{_autoListNumberSuffix}{spacingHash}{prevHashContent}", isNumbered: true);
+            SetParagraphText(current, $"{currHashIndent}2{_autoListNumberSuffix}{spacingHash}{currHashContent}", isNumbered: true);
+            if (_todoTitleArmed)
+            {
+               _todoTemplateApplied = true;
+               _todoTitleArmed = false;
+            }
+            return true;
+         }
+
+         if (!TryParseNumberTrigger(prevText, out var prevIndent, out var prevNumber, out var prevContent))
+            return false;
+
+         if (!TryParseNumberTrigger(currText, out var currIndent, out var currNumber, out var currContent))
+            return false;
+
+         if (currNumber != prevNumber + 1 || !string.Equals(prevIndent, currIndent, StringComparison.Ordinal))
+            return false;
+
+         var spacing = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
+         SetParagraphText(previous, $"{prevIndent}{prevNumber}{_autoListNumberSuffix}{spacing}{prevContent}", isNumbered: true);
+         SetParagraphText(current, $"{currIndent}{currNumber}{_autoListNumberSuffix}{spacing}{currContent}", isNumbered: true);
+         if (_todoTitleArmed)
+         {
+            _todoTemplateApplied = true;
+            _todoTitleArmed = false;
+         }
+         return true;
+      }
+
+      private bool TryParseBulletTrigger(string text, out string indent, out char marker, out string content)
+      {
+         indent = string.Empty;
+         marker = '\0';
+         content = string.Empty;
+         if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+         var match = Regex.Match(text, @"^(\s*)([-*+])\s*(.*)$");
+         if (!match.Success)
+            return false;
+
+         indent = match.Groups[1].Value;
+         marker = match.Groups[2].Value[0];
+         content = match.Groups[3].Value ?? string.Empty;
+         return true;
+      }
+
+      private bool TryParseNumberTrigger(string text, out string indent, out int number, out string content)
+      {
+         indent = string.Empty;
+         number = 0;
+         content = string.Empty;
+         if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+          var match = Regex.Match(text, @"^(\s*)(\d+)([\.|\)])?\s*(.*)$");
+          if (!match.Success)
+             return false;
+
+          indent = match.Groups[1].Value;
+          if (!int.TryParse(match.Groups[2].Value, out number))
+            return false;
+
+          content = match.Groups[4].Value ?? string.Empty;
+         return true;
+      }
+
+      private static bool TryParseHashTrigger(string text, out string indent, out string content)
+      {
+         indent = string.Empty;
+         content = string.Empty;
+         if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+         var match = Regex.Match(text, @"^(\s*)#\s*(.*)$");
+         if (!match.Success)
+            return false;
+
+         indent = match.Groups[1].Value;
+         content = match.Groups[2].Value ?? string.Empty;
+         return true;
+      }
+
+      private bool TryParseFormattedBulletLine(string text, out string indent, out string content)
+      {
+         indent = string.Empty;
+         content = string.Empty;
+         if (string.IsNullOrWhiteSpace(_autoListBulletSymbol))
+            return false;
+
+         var escapedBullet = Regex.Escape(_autoListBulletSymbol);
+         var match = Regex.Match(text, $@"^(\s*){escapedBullet}\s+(.*)$");
+         if (!match.Success)
+            return false;
+
+         indent = match.Groups[1].Value;
+         content = match.Groups[2].Value ?? string.Empty;
+         return true;
+      }
+
+      private bool TryParseFormattedNumberLine(string text, out string indent, out int number, out string content)
+      {
+         indent = string.Empty;
+         number = 0;
+         content = string.Empty;
+
+         var suffix = Regex.Escape(string.IsNullOrWhiteSpace(_autoListNumberSuffix) ? "." : _autoListNumberSuffix);
+         var match = Regex.Match(text, $@"^(\s*)(\d+){suffix}\s+(.*)$");
+         if (!match.Success)
+            return false;
+
+         indent = match.Groups[1].Value;
+         if (!int.TryParse(match.Groups[2].Value, out number))
+            return false;
+
+         content = match.Groups[3].Value ?? string.Empty;
+         return true;
+      }
+
+      private static TextRange GetParagraphContentRange(Paragraph paragraph)
+      {
+         var end = paragraph.ContentEnd.GetInsertionPosition(LogicalDirection.Backward) ?? paragraph.ContentEnd;
+         return new TextRange(paragraph.ContentStart, end);
+      }
+
+      private void CleanupStrikethroughOnEmptyParagraphs()
+      {
+         if (txtNoteContent?.Document == null)
+            return;
+
+         bool changed = false;
+
+         foreach (var paragraph in txtNoteContent.Document.Blocks.OfType<Paragraph>())
+         {
+            if (!string.IsNullOrWhiteSpace(GetParagraphText(paragraph)))
+               continue;
+
+            var range = GetParagraphContentRange(paragraph);
+            var decorations = GetDecorationsOrEmpty(range.GetPropertyValue(Inline.TextDecorationsProperty));
+            if (!HasDecorationLocation(decorations, TextDecorationLocation.Strikethrough))
+               continue;
+
+            RemoveDecorationLocation(decorations, TextDecorationLocation.Strikethrough);
+            range.ApplyPropertyValue(Inline.TextDecorationsProperty, decorations.Count == 0 ? null : decorations);
+            changed = true;
+         }
+
+         if (changed)
+         {
+            var caret = txtNoteContent.CaretPosition;
+            if (caret != null)
+               new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+         }
+      }
+
+      private string GetParagraphText(Paragraph paragraph)
+      {
+         return new TextRange(paragraph.ContentStart, paragraph.ContentEnd).Text.TrimEnd('\r', '\n');
+      }
+
+      private void SetParagraphText(Paragraph paragraph, string text, bool isNumbered)
+      {
+         _suppressAutoListHandling = true;
+         try
+         {
+          ApplyParagraphTemplateStyle(paragraph, isNumbered ? _autoListNumberTemplateRtf : _autoListBulletTemplateRtf, text);
+         }
+         finally
+         {
+            _suppressAutoListHandling = false;
+         }
+      }
+
+      private void ApplyParagraphTemplateStyle(Paragraph paragraph, string? templateRtf, string text)
+      {
+         var style = ExtractTemplateStyle(templateRtf);
+         paragraph.Margin = style.Margin;
+         paragraph.TextIndent = style.TextIndent;
+
+         paragraph.Inlines.Clear();
+         var run = new Run(text)
+         {
+            FontFamily = style.FontFamily,
+            FontSize = style.FontSize,
+            FontWeight = style.FontWeight,
+            FontStyle = style.FontStyle
+         };
+
+         if (style.TextDecorations != null)
+            run.TextDecorations = style.TextDecorations;
+
+         if (style.Foreground != null)
+            run.Foreground = style.Foreground;
+
+         paragraph.Inlines.Add(run);
+      }
+
+      private ListTemplateStyle ExtractTemplateStyle(string? templateRtf)
+      {
+         var style = new ListTemplateStyle();
+         if (string.IsNullOrWhiteSpace(templateRtf))
+            return style;
+
+         try
+         {
+            var doc = new FlowDocument();
+            using var ms = new MemoryStream(Encoding.UTF8.GetBytes(templateRtf));
+          new TextRange(doc.ContentStart, doc.ContentEnd).Load(ms, System.Windows.DataFormats.Rtf);
+
+            var para = doc.Blocks.OfType<Paragraph>().FirstOrDefault();
+            if (para == null)
+               return style;
+
+            style.Margin = para.Margin;
+            style.TextIndent = para.TextIndent;
+
+            var sampleRun = para.Inlines.OfType<Run>().FirstOrDefault();
+            if (sampleRun == null)
+               return style;
+
+            style.FontFamily = sampleRun.FontFamily;
+            style.FontSize = sampleRun.FontSize;
+            style.FontWeight = sampleRun.FontWeight;
+            style.FontStyle = sampleRun.FontStyle;
+            style.TextDecorations = sampleRun.TextDecorations;
+            style.Foreground = sampleRun.Foreground;
+         }
+         catch
+         {
+            // keep defaults
+         }
+
+         return style;
+      }
+
+      private string StripBulletPrefix(string text)
+      {
+         var trimmed = text.TrimStart();
+         if (trimmed.StartsWith(_autoListBulletSymbol, StringComparison.Ordinal))
+            return trimmed[_autoListBulletSymbol.Length..].TrimStart();
+
+         return text.TrimStart();
+      }
+
       public void ApplyPreferences(StickIt.Persistence.AppPreferences prefs)
       {
          _dropShadowEnabled = prefs.EnableDropShadow;
          _noteBordersEnabled = prefs.EnableNoteBorders;
          _snapToGridEnabled = prefs.SnapNotesToGrid;
+         _externalNoteImportExportEnabled = prefs.EnableExternalNoteImportExport;
+         _autoListFormattingEnabled = prefs.EnableAutoListFormatting;
+         _autoListBulletSymbol = string.IsNullOrWhiteSpace(prefs.AutoListBulletSymbol) ? "•" : prefs.AutoListBulletSymbol;
+         _autoListSpacesAfterMarker = Math.Max(1, Math.Min(4, prefs.AutoListSpacesAfterMarker));
+         _autoListNumberSuffix = string.IsNullOrWhiteSpace(prefs.AutoListNumberSuffix) ? "." : prefs.AutoListNumberSuffix;
+         _autoListBulletTemplateRtf = prefs.AutoListBulletTemplateRtf;
+         _autoListNumberTemplateRtf = prefs.AutoListNumberTemplateRtf;
+         _enableTodoTitleTrigger = prefs.EnableTodoTitleTrigger;
+        if (!_enableTodoTitleTrigger)
+         {
+            _todoTitleArmed = false;
+            _todoTemplateApplied = false;
+         }
          _mode2PreventManualMove = prefs.Mode2PreventManualMove;
          _mode2MinimizeWithHost = prefs.Mode2MinimizeWithHost;
          _mode2CloseNoteWhenHostCloses = prefs.Mode2CloseNoteWhenHostCloses;

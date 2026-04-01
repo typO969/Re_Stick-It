@@ -6,8 +6,8 @@ namespace StickIt.Persistence
 {
 	public static class StateMigrator
 	{
-		// Increment this only when you introduce a breaking or meaningfully new schema change.
-      public const int CurrentVersion = 7;
+      // Increment this only when you introduce a breaking or meaningfully new schema change.
+		public const int CurrentVersion = 8;
 
 		public static StickItState MigrateToCurrent(StickItState state)
 		{
@@ -19,6 +19,9 @@ namespace StickIt.Persistence
 			// Always ensure list exists
 			state.Notes ??= new();
 			state.Preferences ??= new();
+
+			if (state.Version < 8)
+				state.Preferences.WarnBeforeReplaceOnPull = true;
 
 			// v0..v4 -> v5 normalization pass (safe even if already v5)
 			NormalizeAllNotes(state);
@@ -98,6 +101,20 @@ namespace StickIt.Persistence
 
 			if (!Enum.IsDefined(typeof(Mode2HostMissingAction), prefs.Mode2HostMissingAction))
 				prefs.Mode2HostMissingAction = Mode2HostMissingAction.SwitchToMode1;
+
+			if (string.IsNullOrWhiteSpace(prefs.AutoListBulletSymbol))
+				prefs.AutoListBulletSymbol = "•";
+
+			prefs.AutoListSpacesAfterMarker = Math.Max(1, Math.Min(4, prefs.AutoListSpacesAfterMarker));
+
+			if (string.IsNullOrWhiteSpace(prefs.AutoListNumberSuffix))
+				prefs.AutoListNumberSuffix = ".";
+
+			if (string.IsNullOrWhiteSpace(prefs.AutoListBulletTemplateRtf))
+				prefs.AutoListBulletTemplateRtf = RtfCodec.FromPlainText("• Task item", prefs.BodyFontSize > 0 ? prefs.BodyFontSize : 14.0);
+
+			if (string.IsNullOrWhiteSpace(prefs.AutoListNumberTemplateRtf))
+				prefs.AutoListNumberTemplateRtf = RtfCodec.FromPlainText("1. Numbered item", prefs.BodyFontSize > 0 ? prefs.BodyFontSize : 14.0);
 
 			prefs.SyncFilePath ??= string.Empty;
 

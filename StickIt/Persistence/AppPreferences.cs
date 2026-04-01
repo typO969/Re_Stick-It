@@ -52,6 +52,15 @@ namespace StickIt.Persistence
 		public bool ShowDateAlongTitle { get; set; }
 		public bool EnableDropShadow { get; set; } = true;
      public bool EnableNoteBorders { get; set; } = true;
+		public bool EnableExternalNoteImportExport { get; set; }
+		public bool EnableAutoListFormatting { get; set; }
+		public string AutoListBulletSymbol { get; set; } = "•";
+		public int AutoListSpacesAfterMarker { get; set; } = 1;
+		public string AutoListNumberSuffix { get; set; } = ".";
+      public string AutoListBulletTemplateRtf { get; set; } = string.Empty;
+		public string AutoListNumberTemplateRtf { get; set; } = string.Empty;
+		public bool EnableTodoTitleTrigger { get; set; }
+		public bool WarnBeforeReplaceOnPull { get; set; } = true;
 
 		public bool SyncEnabled { get; set; }
 		public string SyncFilePath { get; set; } = string.Empty;

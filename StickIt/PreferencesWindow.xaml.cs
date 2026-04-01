@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using Microsoft.Win32;
 
@@ -16,6 +18,7 @@ namespace StickIt
 	public partial class PreferencesWindow : Window
 	{
 		private readonly PreferencesViewModel _viewModel;
+		private bool _suppressSandboxSync;
 
 		public PreferencesWindow(AppPreferences preferences)
 		{
@@ -23,6 +26,7 @@ namespace StickIt
          AppThemeService.ApplyDialogTheme(this);
 			_viewModel = PreferencesViewModel.FromPreferences(preferences);
 			DataContext = _viewModel;
+        InitializeSandboxEditors();
 		}
 
 		private App AppInstance => (App)System.Windows.Application.Current;
@@ -54,8 +58,74 @@ namespace StickIt
 
 		private void ApplyChanges()
 		{
+       CaptureSandboxEditors();
 			var updated = _viewModel.ToPreferences();
 			AppInstance.ApplyPreferences(updated, persist: true);
+		}
+
+		private void InitializeSandboxEditors()
+		{
+			_suppressSandboxSync = true;
+			try
+			{
+				SetRichText(BulletListSandbox, _viewModel.AutoListBulletTemplateRtf, "• Task item");
+				SetRichText(NumberListSandbox, _viewModel.AutoListNumberTemplateRtf, "1. Numbered item");
+			}
+			finally
+			{
+				_suppressSandboxSync = false;
+			}
+		}
+
+		private void CaptureSandboxEditors()
+		{
+			_viewModel.AutoListBulletTemplateRtf = GetRichText(BulletListSandbox);
+			_viewModel.AutoListNumberTemplateRtf = GetRichText(NumberListSandbox);
+		}
+
+		private static void SetRichText(System.Windows.Controls.RichTextBox box, string? rtf, string fallback)
+		{
+			box.Document.Blocks.Clear();
+			if (string.IsNullOrWhiteSpace(rtf))
+			{
+				box.Document.Blocks.Add(new Paragraph(new Run(fallback)));
+				return;
+			}
+
+			try
+			{
+				var bytes = System.Text.Encoding.UTF8.GetBytes(rtf);
+				using var ms = new MemoryStream(bytes);
+          new TextRange(box.Document.ContentStart, box.Document.ContentEnd).Load(ms, System.Windows.DataFormats.Rtf);
+			}
+			catch
+			{
+				box.Document.Blocks.Clear();
+				box.Document.Blocks.Add(new Paragraph(new Run(fallback)));
+			}
+		}
+
+		private static string GetRichText(System.Windows.Controls.RichTextBox box)
+		{
+			using var ms = new MemoryStream();
+       new TextRange(box.Document.ContentStart, box.Document.ContentEnd).Save(ms, System.Windows.DataFormats.Rtf);
+			return System.Text.Encoding.UTF8.GetString(ms.ToArray());
+		}
+
+		private void BulletListSandbox_TextChanged(object sender, TextChangedEventArgs e)
+		{
+			if (_suppressSandboxSync)
+				return;
+
+			_viewModel.AutoListBulletTemplateRtf = GetRichText(BulletListSandbox);
+		}
+
+		private void NumberListSandbox_TextChanged(object sender, TextChangedEventArgs e)
+		{
+			if (_suppressSandboxSync)
+				return;
+
+			_viewModel.AutoListNumberTemplateRtf = GetRichText(NumberListSandbox);
 		}
 
 		private void BrowseSyncFile_Click(object sender, RoutedEventArgs e)
@@ -160,9 +230,22 @@ namespace StickIt
 		public bool ShowDateAlongTitle { get => _showDateAlongTitle; set => SetField(ref _showDateAlongTitle, value); }
 		public bool EnableDropShadow { get => _enableDropShadow; set => SetField(ref _enableDropShadow, value); }
 		public bool EnableNoteBorders { get => _enableNoteBorders; set => SetField(ref _enableNoteBorders, value); }
+      public bool EnableExternalNoteImportExport { get => _enableExternalNoteImportExport; set => SetField(ref _enableExternalNoteImportExport, value); }
+		public bool EnableAutoListFormatting { get => _enableAutoListFormatting; set => SetField(ref _enableAutoListFormatting, value); }
+		public string AutoListBulletSymbol { get => _autoListBulletSymbol; set => SetField(ref _autoListBulletSymbol, value); }
+		public int AutoListSpacesAfterMarker { get => _autoListSpacesAfterMarker; set => SetField(ref _autoListSpacesAfterMarker, value); }
+		public string AutoListNumberSuffix { get => _autoListNumberSuffix; set => SetField(ref _autoListNumberSuffix, value); }
+      public string AutoListBulletTemplateRtf { get => _autoListBulletTemplateRtf; set => SetField(ref _autoListBulletTemplateRtf, value); }
+		public string AutoListNumberTemplateRtf { get => _autoListNumberTemplateRtf; set => SetField(ref _autoListNumberTemplateRtf, value); }
+		public bool EnableTodoTitleTrigger { get => _enableTodoTitleTrigger; set => SetField(ref _enableTodoTitleTrigger, value); }
+		public ObservableCollection<string> AutoListBulletSymbols { get; }
+		public ObservableCollection<int> AutoListSpacingOptions { get; }
+		public ObservableCollection<string> AutoListNumberSuffixes { get; }
+		public string AutoListSample { get => _autoListSample; private set => SetField(ref _autoListSample, value); }
 		public bool SyncEnabled { get => _syncEnabled; set => SetField(ref _syncEnabled, value); }
 		public string SyncFilePath { get => _syncFilePath; set => SetField(ref _syncFilePath, value); }
 		public bool SyncPreferences { get => _syncPreferences; set => SetField(ref _syncPreferences, value); }
+      public bool WarnBeforeReplaceOnPull { get => _warnBeforeReplaceOnPull; set => SetField(ref _warnBeforeReplaceOnPull, value); }
       public ObservableCollection<SyncModeOption> SyncModes { get; }
 		public ObservableCollection<SyncImportModeOption> SyncImportModes { get; }
 		public SyncMode SyncMode { get => _syncMode; set => SetField(ref _syncMode, value); }
@@ -211,9 +294,19 @@ namespace StickIt
 		private bool _showDateAlongTitle;
 		private bool _enableDropShadow = true;
       private bool _enableNoteBorders = true;
+    private bool _enableExternalNoteImportExport;
+		private bool _enableAutoListFormatting;
+		private string _autoListBulletSymbol = "•";
+		private int _autoListSpacesAfterMarker = 1;
+		private string _autoListNumberSuffix = ".";
+     private string _autoListBulletTemplateRtf = string.Empty;
+		private string _autoListNumberTemplateRtf = string.Empty;
+		private bool _enableTodoTitleTrigger;
+		private string _autoListSample = "• Task item\n1. Numbered item";
       private bool _syncEnabled;
 		private string _syncFilePath = string.Empty;
 		private bool _syncPreferences = true;
+      private bool _warnBeforeReplaceOnPull = true;
       private SyncMode _syncMode = SyncMode.PreferPullFromOtherDevice;
 		private SyncImportMode _syncImportMode = SyncImportMode.ReplaceCurrentNotes;
 		private string _syncDeviceId = string.Empty;
@@ -238,6 +331,10 @@ namespace StickIt
 				new(SyncMode.AlwaysPull, "Always pull from sync file"),
 				new(SyncMode.AlwaysPush, "Always push local notes to sync file")
 			};
+
+			AutoListBulletSymbols = new ObservableCollection<string>(new[] { "•", "?", "?", "-", "*", "+" });
+			AutoListSpacingOptions = new ObservableCollection<int>(new[] { 1, 2, 3, 4 });
+			AutoListNumberSuffixes = new ObservableCollection<string>(new[] { ".", ")", ":" });
 
 			SyncImportModes = new ObservableCollection<SyncImportModeOption>
 			{
@@ -280,9 +377,18 @@ namespace StickIt
 				ShowDateAlongTitle = prefs.ShowDateAlongTitle,
 				EnableDropShadow = prefs.EnableDropShadow,
            EnableNoteBorders = prefs.EnableNoteBorders,
+           EnableExternalNoteImportExport = prefs.EnableExternalNoteImportExport,
+				EnableAutoListFormatting = prefs.EnableAutoListFormatting,
+				AutoListBulletSymbol = prefs.AutoListBulletSymbol,
+				AutoListSpacesAfterMarker = prefs.AutoListSpacesAfterMarker,
+				AutoListNumberSuffix = prefs.AutoListNumberSuffix,
+            AutoListBulletTemplateRtf = prefs.AutoListBulletTemplateRtf,
+				AutoListNumberTemplateRtf = prefs.AutoListNumberTemplateRtf,
+				EnableTodoTitleTrigger = prefs.EnableTodoTitleTrigger,
            SyncEnabled = prefs.SyncEnabled,
 				SyncFilePath = prefs.SyncFilePath,
 				SyncPreferences = prefs.SyncPreferences,
+            WarnBeforeReplaceOnPull = prefs.WarnBeforeReplaceOnPull,
             SyncMode = prefs.SyncMode,
 				SyncImportMode = prefs.SyncImportMode,
 				SyncDeviceId = prefs.SyncDeviceId,
@@ -295,6 +401,7 @@ namespace StickIt
 
 			vm.RefreshDesktopAreaSummary();
         vm.RefreshLastSyncSummary();
+        vm.RefreshAutoListSample();
 			return vm;
 		}
 
@@ -324,9 +431,18 @@ namespace StickIt
 				ShowDateAlongTitle = ShowDateAlongTitle,
 				EnableDropShadow = EnableDropShadow,
            EnableNoteBorders = EnableNoteBorders,
+           EnableExternalNoteImportExport = EnableExternalNoteImportExport,
+				EnableAutoListFormatting = EnableAutoListFormatting,
+				AutoListBulletSymbol = string.IsNullOrWhiteSpace(AutoListBulletSymbol) ? "•" : AutoListBulletSymbol,
+				AutoListSpacesAfterMarker = Math.Max(1, Math.Min(4, AutoListSpacesAfterMarker)),
+				AutoListNumberSuffix = string.IsNullOrWhiteSpace(AutoListNumberSuffix) ? "." : AutoListNumberSuffix,
+            AutoListBulletTemplateRtf = AutoListBulletTemplateRtf,
+				AutoListNumberTemplateRtf = AutoListNumberTemplateRtf,
+				EnableTodoTitleTrigger = EnableTodoTitleTrigger,
            SyncEnabled = SyncEnabled,
 				SyncFilePath = SyncFilePath?.Trim() ?? string.Empty,
 				SyncPreferences = SyncPreferences,
+            WarnBeforeReplaceOnPull = WarnBeforeReplaceOnPull,
             SyncMode = SyncMode,
 				SyncImportMode = SyncImportMode,
 				SyncDeviceId = SyncDeviceId,
@@ -356,6 +472,14 @@ namespace StickIt
 				: LastSyncUtc.Value.ToLocalTime().ToString("g");
 		}
 
+		public void RefreshAutoListSample()
+		{
+			var spaces = new string(' ', Math.Max(1, Math.Min(4, AutoListSpacesAfterMarker)));
+			var bullet = string.IsNullOrWhiteSpace(AutoListBulletSymbol) ? "•" : AutoListBulletSymbol;
+			var suffix = string.IsNullOrWhiteSpace(AutoListNumberSuffix) ? "." : AutoListNumberSuffix;
+			AutoListSample = $"{bullet}{spaces}Task item{Environment.NewLine}1{suffix}{spaces}Numbered item";
+		}
+
 		private void OnPropertyChanged([CallerMemberName] string? name = null) =>
 			PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
@@ -372,6 +496,9 @@ namespace StickIt
 
 			if (name == nameof(LastSyncUtc))
 				RefreshLastSyncSummary();
+
+			if (name == nameof(AutoListBulletSymbol) || name == nameof(AutoListSpacesAfterMarker) || name == nameof(AutoListNumberSuffix))
+				RefreshAutoListSample();
 		}
 	}
 

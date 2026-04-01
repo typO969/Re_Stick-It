@@ -370,6 +370,101 @@ namespace StickIt
 			return TrySyncCore(SyncCommand.Push, out message);
 		}
 
+		public bool TryImportExternalNote(NotePersist incomingNote, SyncImportMode importMode, NoteWindow? contextWindow, out string message)
+		{
+			if (incomingNote == null)
+			{
+				message = "Import failed: note payload is empty.";
+				return false;
+			}
+
+			if (string.IsNullOrWhiteSpace(incomingNote.Id))
+				incomingNote.Id = Guid.NewGuid().ToString("N");
+
+			try
+			{
+				_saveTimer.Stop();
+				FlushPendingUiEdits();
+				PersistAllWindows();
+
+				if (importMode == SyncImportMode.ReplaceCurrentNotes)
+				{
+					_suppressAutoSave = true;
+					try
+					{
+						foreach (var w in _windows.ToArray())
+						{
+							try { w.Close(); } catch { }
+						}
+
+						_windows.Clear();
+						_state.Notes = new List<NotePersist> { incomingNote };
+						SpawnWindow(incomingNote);
+					}
+					finally
+					{
+						_suppressAutoSave = false;
+					}
+
+					JsonStore.Save(_state);
+					message = "Import complete. Replaced current notes with imported note.";
+					return true;
+				}
+
+				var existing = _state.Notes.FirstOrDefault(n => string.Equals(n.Id, incomingNote.Id, StringComparison.OrdinalIgnoreCase));
+
+				if (existing == null)
+				{
+					_state.Notes.Add(incomingNote);
+					SpawnWindow(incomingNote);
+					JsonStore.Save(_state);
+					message = "Import complete. Added imported note.";
+					return true;
+				}
+
+				if (importMode == SyncImportMode.AddMissingSyncedNotes)
+				{
+					message = "Import complete. Note already exists; no changes made.";
+					return true;
+				}
+
+				if (incomingNote.ModifiedUtc < existing.ModifiedUtc)
+				{
+					message = "Import complete. Existing note is newer; no changes made.";
+					return true;
+				}
+
+				var index = _state.Notes.IndexOf(existing);
+				if (index >= 0)
+					_state.Notes[index] = incomingNote;
+
+				var open = _windows.FirstOrDefault(w => string.Equals(w.NoteId, incomingNote.Id, StringComparison.OrdinalIgnoreCase));
+				if (open != null)
+				{
+					_suppressAutoSave = true;
+					try
+					{
+						try { open.Close(); } catch { }
+						_windows.Remove(open);
+					}
+					finally
+					{
+						_suppressAutoSave = false;
+					}
+				}
+
+				SpawnWindow(incomingNote);
+				JsonStore.Save(_state);
+				message = "Import complete. Updated existing note from imported note.";
+				return true;
+			}
+			catch (Exception ex)
+			{
+				message = $"Import failed: {ex.Message}";
+				return false;
+			}
+		}
+
 		private bool TrySyncCore(SyncCommand command, out string message)
 		{
 			_saveTimer.Stop();
@@ -423,6 +518,12 @@ namespace StickIt
 
 				if (command == SyncCommand.Pull)
 				{
+              if (!ConfirmReplacePullIfNeeded(Preferences.SyncImportMode))
+					{
+						message = "Pull canceled.";
+						return false;
+					}
+
                ApplyRemoteSyncState(remoteState, Preferences.SyncPreferences, Preferences.SyncImportMode);
 					message = "Pull complete. Loaded notes from sync file.";
 					return MarkSyncSuccessAndSave(message);
@@ -432,6 +533,12 @@ namespace StickIt
 
 				if (shouldPull)
 				{
+             if (!ConfirmReplacePullIfNeeded(Preferences.SyncImportMode))
+					{
+						message = "Sync canceled.";
+						return false;
+					}
+
              ApplyRemoteSyncState(remoteState, Preferences.SyncPreferences, Preferences.SyncImportMode);
 					pulledFromRemote = true;
 				}
@@ -472,6 +579,87 @@ namespace StickIt
 			_state.Preferences.LastSyncUtc = DateTime.UtcNow;
 			JsonStore.Save(_state);
 			return true;
+		}
+
+		private bool ConfirmReplacePullIfNeeded(SyncImportMode importMode)
+		{
+			if (importMode != SyncImportMode.ReplaceCurrentNotes)
+				return true;
+
+			if (!_state.Preferences.WarnBeforeReplaceOnPull)
+				return true;
+
+			if (_state.Notes.Count == 0)
+				return true;
+
+         Window? owner = _preferencesWindow?.IsLoaded == true
+				? _preferencesWindow
+				: _windows.FirstOrDefault(w => w.IsLoaded);
+
+			var (confirmed, dontWarnAgain) = ShowReplacePullConfirmation(owner);
+			if (dontWarnAgain)
+			{
+				_state.Preferences.WarnBeforeReplaceOnPull = false;
+				JsonStore.Save(_state);
+			}
+
+			return confirmed;
+		}
+
+		private static (bool confirmed, bool dontWarnAgain) ShowReplacePullConfirmation(Window? owner)
+		{
+			var dialog = new Window
+			{
+				Title = "Confirm replace",
+				Width = 420,
+				Height = 190,
+				ResizeMode = ResizeMode.NoResize,
+				WindowStartupLocation = owner == null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner,
+				Owner = owner,
+				ShowInTaskbar = false
+			};
+
+			var root = new System.Windows.Controls.Grid { Margin = new Thickness(12) };
+			root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+			root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+			root.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = GridLength.Auto });
+
+			var text = new System.Windows.Controls.TextBlock
+			{
+				Text = "This will replace all current notes with synced notes. Continue?",
+				TextWrapping = TextWrapping.Wrap
+			};
+			System.Windows.Controls.Grid.SetRow(text, 0);
+			root.Children.Add(text);
+
+			var dontWarn = new System.Windows.Controls.CheckBox
+			{
+				Margin = new Thickness(0, 10, 0, 8),
+				Content = "Don't warn again"
+			};
+			System.Windows.Controls.Grid.SetRow(dontWarn, 1);
+			root.Children.Add(dontWarn);
+
+			var buttons = new System.Windows.Controls.StackPanel
+			{
+				Orientation = System.Windows.Controls.Orientation.Horizontal,
+          HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+			};
+
+			var cancel = new System.Windows.Controls.Button { Content = "Cancel", MinWidth = 75, Margin = new Thickness(0, 0, 8, 0), IsCancel = true };
+			var replace = new System.Windows.Controls.Button { Content = "Replace", MinWidth = 75, IsDefault = true };
+
+			cancel.Click += (_, __) => dialog.DialogResult = false;
+			replace.Click += (_, __) => dialog.DialogResult = true;
+
+			buttons.Children.Add(cancel);
+			buttons.Children.Add(replace);
+			System.Windows.Controls.Grid.SetRow(buttons, 2);
+			root.Children.Add(buttons);
+
+			dialog.Content = root;
+			var result = dialog.ShowDialog() == true;
+			return (result, dontWarn.IsChecked == true);
 		}
 
 		private string EnsureSyncDeviceId()
@@ -982,7 +1170,16 @@ namespace StickIt
 				BodyFontSize = source.BodyFontSize,
 				ShowDateAlongTitle = source.ShowDateAlongTitle,
 				EnableDropShadow = source.EnableDropShadow,
-				EnableNoteBorders = source.EnableNoteBorders
+          EnableNoteBorders = source.EnableNoteBorders,
+				EnableExternalNoteImportExport = source.EnableExternalNoteImportExport,
+				EnableAutoListFormatting = source.EnableAutoListFormatting,
+				AutoListBulletSymbol = source.AutoListBulletSymbol,
+				AutoListSpacesAfterMarker = source.AutoListSpacesAfterMarker,
+				AutoListNumberSuffix = source.AutoListNumberSuffix,
+            AutoListBulletTemplateRtf = source.AutoListBulletTemplateRtf,
+				AutoListNumberTemplateRtf = source.AutoListNumberTemplateRtf,
+            EnableTodoTitleTrigger = source.EnableTodoTitleTrigger,
+				WarnBeforeReplaceOnPull = source.WarnBeforeReplaceOnPull
 			};
 		}
 

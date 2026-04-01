@@ -36,6 +36,73 @@ namespace StickIt
 
       private void Done_Click(object sender, RoutedEventArgs e) => Close();
 
+      private NoteWindow? GetSelectedWindow()
+      {
+         return (NotesGrid.SelectedItem as NoteManagerItem)?.Window;
+      }
+
+      private void AddNote_Click(object sender, RoutedEventArgs e)
+      {
+         AppInstance.CreateNewNoteNear(GetSelectedWindow());
+         RefreshItems();
+      }
+
+      private void SaveNotesNow_Click(object sender, RoutedEventArgs e)
+      {
+         AppInstance.SaveAllNotesNow();
+      }
+
+      private void SyncNow_Click(object sender, RoutedEventArgs e)
+      {
+         if (AppInstance.TrySyncNow(out var message))
+            System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+         else
+            System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+
+      private void PullNow_Click(object sender, RoutedEventArgs e)
+      {
+         if (AppInstance.TryPullFromSync(out var message))
+            System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Information);
+         else
+            System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+         RefreshItems();
+      }
+
+      private void PushNow_Click(object sender, RoutedEventArgs e)
+      {
+         if (AppInstance.TryPushToSync(out var message))
+            System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Information);
+         else
+            System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+
+      private void ExportSelected_Click(object sender, RoutedEventArgs e)
+      {
+         var selected = GetSelectedWindow();
+         if (selected == null)
+         {
+            System.Windows.MessageBox.Show(this, "Select a note first.", "Export note", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+         }
+
+         selected.ExportNoteFromManager();
+      }
+
+      private void LoadIntoSelected_Click(object sender, RoutedEventArgs e)
+      {
+         var selected = GetSelectedWindow();
+         if (selected == null)
+         {
+            System.Windows.MessageBox.Show(this, "Select a note first.", "Load note", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+         }
+
+         selected.ImportNoteFromManager();
+         RefreshItems();
+      }
+
       private void Show_Click(object sender, RoutedEventArgs e)
       {
          if (sender is not FrameworkElement element || element.Tag is not NoteWindow w) return;

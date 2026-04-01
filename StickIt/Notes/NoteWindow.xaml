@@ -178,7 +178,7 @@
 
 
          <Border.ContextMenu>
-            <ContextMenu>
+            <ContextMenu Opened="NoteContextMenu_Opened">
 
                <!--  Lifecycle  -->
                <MenuItem
@@ -455,6 +455,8 @@
                <Separator />
 
                <!--  Editing  -->
+                <MenuItem Click="Menu_TaskCompleted" Header="Task completed" />
+                <Separator />
                <MenuItem Click="Menu_Cut" Header="Cut" />
                <MenuItem Click="Menu_Copy" Header="Copy" />
                <MenuItem Click="Menu_Paste" Header="Paste" />
@@ -462,14 +464,19 @@
                <Separator />
 
                <!--  Save/Load (note: you already autosave, but keep these for parity)  -->
-               <MenuItem Click="Menu_SaveNow" Header="Save notes now" />
-               <MenuItem Click="Menu_SyncNow" Header="Sync now" />
-               <MenuItem Click="Menu_SyncPullNow" Header="Pull now" />
-               <MenuItem Click="Menu_SyncPushNow" Header="Push now" />
-               <MenuItem
-                  Click="Menu_LoadNotes"
-                  Header="Load notes..."
-                  IsEnabled="False" />
+                <MenuItem Header="Saving/Loading">
+                   <MenuItem Click="Menu_SaveNow" Header="Save notes now" />
+                   <MenuItem Click="Menu_SyncNow" Header="Sync now" />
+                   <MenuItem Click="Menu_SyncPullNow" Header="Pull now" />
+                   <MenuItem Click="Menu_SyncPushNow" Header="Push now" />
+                   <Separator />
+                   <MenuItem x:Name="miExportNote" Click="Menu_ExportNote" Header="Export note..." />
+                   <MenuItem x:Name="miImportNote" Click="Menu_ImportNote" Header="Load note..." />
+                   <MenuItem
+                      Click="Menu_LoadNotes"
+                      Header="Load notes..."
+                      IsEnabled="False" />
+                </MenuItem>
 
                <Separator />
 
@@ -724,6 +731,7 @@
                      FontWeight="Normal"
                      Foreground="{Binding ColorKey, Converter={StaticResource NoteComponentBrush}, ConverterParameter=Text}"
                      HorizontalScrollBarVisibility="Disabled"
+                     PreviewMouseRightButtonDown="txtNoteContent_PreviewMouseRightButtonDown"
                      RenderTransformOrigin="0.5,0.5"
                      VerticalScrollBarVisibility="Disabled" />
 
