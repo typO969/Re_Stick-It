@@ -100,6 +100,15 @@ namespace StickIt.Persistence
 				prefs.Mode2HostMissingAction = Mode2HostMissingAction.SwitchToMode1;
 
 			prefs.SyncFilePath ??= string.Empty;
+
+			if (!Enum.IsDefined(typeof(SyncMode), prefs.SyncMode))
+				prefs.SyncMode = SyncMode.PreferPullFromOtherDevice;
+
+			if (!Enum.IsDefined(typeof(SyncImportMode), prefs.SyncImportMode))
+				prefs.SyncImportMode = SyncImportMode.ReplaceCurrentNotes;
+
+			if (string.IsNullOrWhiteSpace(prefs.SyncDeviceId))
+				prefs.SyncDeviceId = Guid.NewGuid().ToString("N");
 		}
 	}
 }

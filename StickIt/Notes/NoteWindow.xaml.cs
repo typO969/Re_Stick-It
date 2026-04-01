@@ -22,6 +22,8 @@ using StickIt.Services;
 using StickIt.Sticky.Services;
 
 using WpfApplication = System.Windows.Application;
+using WpfDataFormats = global::System.Windows.DataFormats;
+using WpfDataObject = global::System.Windows.DataObject;
 
 namespace StickIt
 {
@@ -317,6 +319,8 @@ namespace StickIt
       {
          InitializeComponent();
 
+         WpfDataObject.AddPastingHandler(txtNoteContent, TxtNoteContent_Pasting);
+
          Loaded += (_, __) => EnsureStickyTargetOnLoad();
 
          Loaded += (_, __) =>
@@ -472,6 +476,8 @@ namespace StickIt
 
       protected override void OnClosed(EventArgs e)
       {
+         WpfDataObject.RemovePastingHandler(txtNoteContent, TxtNoteContent_Pasting);
+
          try
          {
             if (_inkToolbarWindow != null)
@@ -494,6 +500,43 @@ namespace StickIt
 
          try { ClearLocalAotOwner(); } catch { }
          base.OnClosed(e);
+      }
+
+      private void TxtNoteContent_Pasting(object sender, DataObjectPastingEventArgs e)
+      {
+         if (e?.SourceDataObject == null)
+            return;
+
+         if (!string.Equals(e.FormatToApply, WpfDataFormats.Xaml, StringComparison.Ordinal))
+            return;
+
+         try
+         {
+            var xaml = e.SourceDataObject.GetData(WpfDataFormats.Xaml) as string;
+            if (!string.IsNullOrWhiteSpace(xaml)
+               && (xaml.Contains("Microsoft.VisualStudio.PlatformUI", StringComparison.Ordinal)
+                   || xaml.Contains("DelegateCommand", StringComparison.Ordinal)))
+            {
+               if (e.SourceDataObject.GetDataPresent(WpfDataFormats.UnicodeText))
+               {
+                  e.FormatToApply = WpfDataFormats.UnicodeText;
+                  return;
+               }
+
+               if (e.SourceDataObject.GetDataPresent(WpfDataFormats.Text))
+               {
+                  e.FormatToApply = WpfDataFormats.Text;
+                  return;
+               }
+
+               e.CancelCommand();
+            }
+         }
+         catch
+         {
+            if (e.SourceDataObject.GetDataPresent(WpfDataFormats.UnicodeText))
+               e.FormatToApply = WpfDataFormats.UnicodeText;
+         }
       }
 
       private void Menu_ToggleBold(object sender, RoutedEventArgs e) => ToggleBold();
@@ -1177,6 +1220,22 @@ namespace StickIt
           System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
          else
            System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+
+      private void Menu_SyncPullNow(object sender, RoutedEventArgs e)
+      {
+         if (AppInstance.TryPullFromSync(out var message))
+          System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Information);
+         else
+           System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Warning);
+      }
+
+      private void Menu_SyncPushNow(object sender, RoutedEventArgs e)
+      {
+         if (AppInstance.TryPushToSync(out var message))
+          System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Information);
+         else
+           System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Warning);
       }
 
       private void Menu_MinimizeAll(object sender, RoutedEventArgs e)

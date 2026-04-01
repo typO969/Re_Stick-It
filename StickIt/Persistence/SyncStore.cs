@@ -12,13 +12,21 @@ namespace StickIt.Persistence
 			WriteIndented = true
 		};
 
-		public static StickItState Load(string path)
+    public static SyncDocument LoadDocument(string path)
 		{
 			var json = File.ReadAllText(path, Encoding.UTF8);
 			var payload = JsonSerializer.Deserialize<SyncPayload>(json, Options);
-			var state = payload?.State ?? new StickItState();
-			return StateMigrator.MigrateToCurrent(state);
+        var state = StateMigrator.MigrateToCurrent(payload?.State ?? new StickItState());
+
+			return new SyncDocument
+			{
+				DeviceId = payload?.DeviceId ?? string.Empty,
+				ExportedUtc = payload?.ExportedUtc ?? DateTime.MinValue,
+				State = state
+			};
 		}
+
+		public static StickItState Load(string path) => LoadDocument(path).State;
 
 		public static void Save(string path, StickItState state, string deviceId)
 		{
@@ -60,5 +68,12 @@ namespace StickIt.Persistence
 			public string DeviceId { get; set; } = string.Empty;
 			public StickItState State { get; set; } = new();
 		}
+	}
+
+	public sealed class SyncDocument
+	{
+		public string DeviceId { get; set; } = string.Empty;
+		public DateTime ExportedUtc { get; set; }
+		public StickItState State { get; set; } = new();
 	}
 }

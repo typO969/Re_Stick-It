@@ -7,6 +7,21 @@ namespace StickIt.Persistence
 		SwitchToMode1 = 2
 	}
 
+	public enum SyncMode
+	{
+		Smart = 0,
+		PreferPullFromOtherDevice = 1,
+		AlwaysPull = 2,
+		AlwaysPush = 3
+	}
+
+	public enum SyncImportMode
+	{
+		ReplaceCurrentNotes = 0,
+		AddMissingSyncedNotes = 1,
+		MergeByNoteIdNewestWins = 2
+	}
+
 	public sealed class AppPreferences
 	{
 		public bool RunOnStartup { get; set; }
@@ -41,6 +56,9 @@ namespace StickIt.Persistence
 		public bool SyncEnabled { get; set; }
 		public string SyncFilePath { get; set; } = string.Empty;
 		public bool SyncPreferences { get; set; } = true;
+      public SyncMode SyncMode { get; set; } = SyncMode.PreferPullFromOtherDevice;
+    public SyncImportMode SyncImportMode { get; set; } = SyncImportMode.ReplaceCurrentNotes;
+		public string SyncDeviceId { get; set; } = string.Empty;
 		public DateTime? LastSyncUtc { get; set; }
 	}
 }

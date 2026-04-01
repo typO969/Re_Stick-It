@@ -357,6 +357,21 @@ namespace StickIt
 
 		public bool TrySyncNow(out string message)
 		{
+         return TrySyncCore(SyncCommand.Auto, out message);
+		}
+
+		public bool TryPullFromSync(out string message)
+		{
+			return TrySyncCore(SyncCommand.Pull, out message);
+		}
+
+		public bool TryPushToSync(out string message)
+		{
+			return TrySyncCore(SyncCommand.Push, out message);
+		}
+
+		private bool TrySyncCore(SyncCommand command, out string message)
+		{
 			_saveTimer.Stop();
 			FlushPendingUiEdits();
 			PersistAllWindows();
@@ -377,42 +392,95 @@ namespace StickIt
 			try
 			{
 				var localSyncState = BuildSyncState(Preferences.SyncPreferences);
+          var localStamp = SyncStore.GetNotesModifiedUtc(localSyncState);
+				var localDeviceId = EnsureSyncDeviceId();
 				var pulledFromRemote = false;
+				var remoteExists = System.IO.File.Exists(syncPath);
 
-				if (System.IO.File.Exists(syncPath))
+				if (command == SyncCommand.Push)
 				{
-					var remoteState = SyncStore.Load(syncPath);
-					var localStamp = SyncStore.GetNotesModifiedUtc(localSyncState);
-					var remoteStamp = SyncStore.GetNotesModifiedUtc(remoteState);
+					SyncStore.Save(syncPath, localSyncState, localDeviceId);
+					message = "Push complete. Wrote current notes to sync file.";
+					return MarkSyncSuccessAndSave(message);
+				}
 
-					if (remoteStamp > localStamp)
+				if (!remoteExists)
+				{
+					if (command == SyncCommand.Pull)
 					{
-						ApplyRemoteSyncState(remoteState, Preferences.SyncPreferences);
-						pulledFromRemote = true;
+						message = "Pull failed: sync file does not exist yet.";
+						return false;
 					}
-					else
-					{
-						SyncStore.Save(syncPath, localSyncState, Environment.MachineName);
-					}
+
+               SyncStore.Save(syncPath, localSyncState, localDeviceId);
+					message = "Sync complete. Created sync file from current notes.";
+					return MarkSyncSuccessAndSave(message);
+				}
+
+				var remoteDocument = SyncStore.LoadDocument(syncPath);
+				var remoteState = remoteDocument.State;
+				var remoteStamp = SyncStore.GetNotesModifiedUtc(remoteState);
+
+				if (command == SyncCommand.Pull)
+				{
+               ApplyRemoteSyncState(remoteState, Preferences.SyncPreferences, Preferences.SyncImportMode);
+					message = "Pull complete. Loaded notes from sync file.";
+					return MarkSyncSuccessAndSave(message);
+				}
+
+				var shouldPull = ShouldPullFromRemote(localStamp, remoteStamp, remoteDocument.DeviceId, localDeviceId);
+
+				if (shouldPull)
+				{
+             ApplyRemoteSyncState(remoteState, Preferences.SyncPreferences, Preferences.SyncImportMode);
+					pulledFromRemote = true;
 				}
 				else
 				{
-					SyncStore.Save(syncPath, localSyncState, Environment.MachineName);
+               SyncStore.Save(syncPath, localSyncState, localDeviceId);
 				}
-
-				_state.Preferences.LastSyncUtc = DateTime.UtcNow;
-				JsonStore.Save(_state);
 
 				message = pulledFromRemote
 					? "Sync complete. Pulled newer notes from sync file."
 					: "Sync complete. Pushed current notes to sync file.";
-				return true;
+            return MarkSyncSuccessAndSave(message);
 			}
 			catch (Exception ex)
 			{
 				message = $"Sync failed: {ex.Message}";
 				return false;
 			}
+		}
+
+		private bool ShouldPullFromRemote(DateTime localStamp, DateTime remoteStamp, string remoteDeviceId, string localDeviceId)
+		{
+			return Preferences.SyncMode switch
+			{
+				SyncMode.AlwaysPull => true,
+				SyncMode.AlwaysPush => false,
+				SyncMode.PreferPullFromOtherDevice =>
+					!string.IsNullOrWhiteSpace(remoteDeviceId)
+					&& !string.Equals(remoteDeviceId, localDeviceId, StringComparison.OrdinalIgnoreCase)
+					? true
+					: remoteStamp > localStamp,
+				_ => remoteStamp > localStamp
+			};
+		}
+
+		private bool MarkSyncSuccessAndSave(string message)
+		{
+			_state.Preferences.LastSyncUtc = DateTime.UtcNow;
+			JsonStore.Save(_state);
+			return true;
+		}
+
+		private string EnsureSyncDeviceId()
+		{
+			if (!string.IsNullOrWhiteSpace(_state.Preferences.SyncDeviceId))
+				return _state.Preferences.SyncDeviceId;
+
+			_state.Preferences.SyncDeviceId = Guid.NewGuid().ToString("N");
+			return _state.Preferences.SyncDeviceId;
 		}
 
 
@@ -617,6 +685,10 @@ namespace StickIt
 					return; // shutdown path: don't touch _windows (and don't trigger saves)
 
 				_windows.Remove(w);
+
+				if (_suppressAutoSave)
+					return;
+
 				QueueSave(300);
 
 				// Leave app running when last note is deleted.
@@ -847,7 +919,7 @@ namespace StickIt
 			};
 		}
 
-		private void ApplyRemoteSyncState(StickItState remoteState, bool includePreferences)
+      private void ApplyRemoteSyncState(StickItState remoteState, bool includePreferences, SyncImportMode importMode)
 		{
 			var currentSyncSettings = CloneSyncSettings(_state.Preferences);
 
@@ -860,8 +932,11 @@ namespace StickIt
 					catch { }
 				}
 
-				_windows.Clear();
-				_state.Notes = remoteState.Notes?.ToList() ?? new List<NotePersist>();
+          _windows.Clear();
+				_state.Notes = ComposeImportedNotes(
+					_state.Notes ?? new List<NotePersist>(),
+					remoteState.Notes ?? new List<NotePersist>(),
+					importMode);
 
 				if (includePreferences)
 					_state.Preferences = remoteState.Preferences ?? new AppPreferences();
@@ -918,6 +993,9 @@ namespace StickIt
 				SyncEnabled = source.SyncEnabled,
 				SyncFilePath = source.SyncFilePath,
 				SyncPreferences = source.SyncPreferences,
+          SyncMode = source.SyncMode,
+          SyncImportMode = source.SyncImportMode,
+				SyncDeviceId = source.SyncDeviceId,
 				LastSyncUtc = source.LastSyncUtc
 			};
 		}
@@ -927,7 +1005,51 @@ namespace StickIt
 			target.SyncEnabled = syncSettings.SyncEnabled;
 			target.SyncFilePath = syncSettings.SyncFilePath;
 			target.SyncPreferences = syncSettings.SyncPreferences;
+        target.SyncMode = syncSettings.SyncMode;
+         target.SyncImportMode = syncSettings.SyncImportMode;
+			target.SyncDeviceId = syncSettings.SyncDeviceId;
 			target.LastSyncUtc = syncSettings.LastSyncUtc;
+		}
+
+		private static List<NotePersist> ComposeImportedNotes(List<NotePersist> localNotes, List<NotePersist> remoteNotes, SyncImportMode importMode)
+		{
+			if (importMode == SyncImportMode.ReplaceCurrentNotes)
+				return remoteNotes.ToList();
+
+			var byId = new Dictionary<string, NotePersist>(StringComparer.OrdinalIgnoreCase);
+
+			foreach (var local in localNotes)
+			{
+				if (string.IsNullOrWhiteSpace(local.Id))
+					local.Id = Guid.NewGuid().ToString("N");
+
+				if (!byId.ContainsKey(local.Id))
+					byId[local.Id] = local;
+			}
+
+			foreach (var remote in remoteNotes)
+			{
+				if (string.IsNullOrWhiteSpace(remote.Id))
+					remote.Id = Guid.NewGuid().ToString("N");
+
+				if (!byId.TryGetValue(remote.Id, out var existing))
+				{
+					byId[remote.Id] = remote;
+					continue;
+				}
+
+				if (importMode == SyncImportMode.MergeByNoteIdNewestWins && remote.ModifiedUtc >= existing.ModifiedUtc)
+					byId[remote.Id] = remote;
+			}
+
+			return byId.Values.ToList();
+		}
+
+		private enum SyncCommand
+		{
+			Auto,
+			Pull,
+			Push
 		}
 
 

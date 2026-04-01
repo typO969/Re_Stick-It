@@ -80,7 +80,7 @@
                               Width="235"
                               DisplayMemberPath="Label"
                               ItemsSource="{Binding Mode2HostMissingActions}"
-                           SelectedItem="{Binding Mode2HostMissingAction}" />
+                              SelectedItem="{Binding SelectedMode2HostMissingAction}" />
                         </StackPanel>
                      </StackPanel>
                   </GroupBox>
@@ -178,6 +178,30 @@
                            Content="Sync preferences across devices"
                            IsChecked="{Binding SyncPreferences}" />
 
+                        <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                           <TextBlock
+                              Width="135"
+                              VerticalAlignment="Center"
+                              Text="Sync behavior:" />
+                           <ComboBox
+                              Width="390"
+                              DisplayMemberPath="Label"
+                              ItemsSource="{Binding SyncModes}"
+                              SelectedItem="{Binding SelectedSyncMode}" />
+                        </StackPanel>
+
+                        <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                           <TextBlock
+                              Width="135"
+                              VerticalAlignment="Center"
+                              Text="When pulling:" />
+                           <ComboBox
+                              Width="390"
+                              DisplayMemberPath="Label"
+                              ItemsSource="{Binding SyncImportModes}"
+                              SelectedItem="{Binding SelectedSyncImportMode}" />
+                        </StackPanel>
+
                         <TextBlock
                            Margin="0,10,0,2"
                            FontWeight="SemiBold"
@@ -207,6 +231,16 @@
                               MinWidth="95"
                               Click="SyncNow_Click"
                               Content="Sync now" />
+                           <Button
+                              MinWidth="95"
+                              Margin="8,0,0,0"
+                              Click="PullSync_Click"
+                              Content="Pull" />
+                           <Button
+                              MinWidth="95"
+                              Margin="8,0,0,0"
+                              Click="PushSync_Click"
+                              Content="Push" />
                            <TextBlock
                               Margin="10,2,0,0"
                               VerticalAlignment="Center"

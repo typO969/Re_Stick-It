@@ -89,6 +89,28 @@ namespace StickIt
 
 			_viewModel.LastSyncUtc = AppInstance.Preferences.LastSyncUtc;
 		}
+
+		private void PullSync_Click(object sender, RoutedEventArgs e)
+		{
+			ApplyChanges();
+			if (AppInstance.TryPullFromSync(out var message))
+				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+			else
+				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+			_viewModel.LastSyncUtc = AppInstance.Preferences.LastSyncUtc;
+		}
+
+		private void PushSync_Click(object sender, RoutedEventArgs e)
+		{
+			ApplyChanges();
+			if (AppInstance.TryPushToSync(out var message))
+				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+			else
+				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+			_viewModel.LastSyncUtc = AppInstance.Preferences.LastSyncUtc;
+		}
 	}
 
 	public sealed class PreferencesViewModel : INotifyPropertyChanged
@@ -141,6 +163,22 @@ namespace StickIt
 		public bool SyncEnabled { get => _syncEnabled; set => SetField(ref _syncEnabled, value); }
 		public string SyncFilePath { get => _syncFilePath; set => SetField(ref _syncFilePath, value); }
 		public bool SyncPreferences { get => _syncPreferences; set => SetField(ref _syncPreferences, value); }
+      public ObservableCollection<SyncModeOption> SyncModes { get; }
+		public ObservableCollection<SyncImportModeOption> SyncImportModes { get; }
+		public SyncMode SyncMode { get => _syncMode; set => SetField(ref _syncMode, value); }
+      public SyncImportMode SyncImportMode { get => _syncImportMode; set => SetField(ref _syncImportMode, value); }
+		private string SyncDeviceId { get => _syncDeviceId; set => SetField(ref _syncDeviceId, value); }
+		public SyncModeOption SelectedSyncMode
+		{
+			get => SyncModes.First(o => o.Value == SyncMode);
+			set => SyncMode = value?.Value ?? SyncMode.PreferPullFromOtherDevice;
+		}
+
+		public SyncImportModeOption SelectedSyncImportMode
+		{
+			get => SyncImportModes.First(o => o.Value == SyncImportMode);
+			set => SyncImportMode = value?.Value ?? SyncImportMode.ReplaceCurrentNotes;
+		}
 		public DateTime? LastSyncUtc { get => _lastSyncUtc; set => SetField(ref _lastSyncUtc, value); }
 
 		public double? DesktopAreaLeft { get => _desktopAreaLeft; set => SetField(ref _desktopAreaLeft, value); }
@@ -176,6 +214,9 @@ namespace StickIt
       private bool _syncEnabled;
 		private string _syncFilePath = string.Empty;
 		private bool _syncPreferences = true;
+      private SyncMode _syncMode = SyncMode.PreferPullFromOtherDevice;
+		private SyncImportMode _syncImportMode = SyncImportMode.ReplaceCurrentNotes;
+		private string _syncDeviceId = string.Empty;
 		private DateTime? _lastSyncUtc;
 		private double? _desktopAreaLeft;
 		private double? _desktopAreaTop;
@@ -190,6 +231,21 @@ namespace StickIt
 		{
 			FontFamilies = new ObservableCollection<System.Windows.Media.FontFamily>(Fonts.SystemFontFamilies.OrderBy(f => f.Source));
         FontSizes = new ObservableCollection<double>(new[] { 8d, 9d, 10d, 11d, 12d, 13d, 14d, 15d, 16d, 18d, 19d, 20d, 22d, 24d, 28d, 32d });
+        SyncModes = new ObservableCollection<SyncModeOption>
+			{
+				new(SyncMode.Smart, "Smart (timestamp-based)"),
+				new(SyncMode.PreferPullFromOtherDevice, "Prefer pull when sync file came from another device"),
+				new(SyncMode.AlwaysPull, "Always pull from sync file"),
+				new(SyncMode.AlwaysPush, "Always push local notes to sync file")
+			};
+
+			SyncImportModes = new ObservableCollection<SyncImportModeOption>
+			{
+				new(SyncImportMode.ReplaceCurrentNotes, "Replace current notes with synced notes"),
+				new(SyncImportMode.AddMissingSyncedNotes, "Add synced notes to current notes"),
+				new(SyncImportMode.MergeByNoteIdNewestWins, "Merge by note id (newest note wins)")
+			};
+
 			Mode2HostMissingActions = new ObservableCollection<Mode2ActionOption>
 			{
 				new(Mode2HostMissingAction.StickToDesktop, "Stick note to desktop"),
@@ -227,6 +283,9 @@ namespace StickIt
            SyncEnabled = prefs.SyncEnabled,
 				SyncFilePath = prefs.SyncFilePath,
 				SyncPreferences = prefs.SyncPreferences,
+            SyncMode = prefs.SyncMode,
+				SyncImportMode = prefs.SyncImportMode,
+				SyncDeviceId = prefs.SyncDeviceId,
 				LastSyncUtc = prefs.LastSyncUtc,
 				DesktopAreaLeft = prefs.DesktopAreaLeft,
 				DesktopAreaTop = prefs.DesktopAreaTop,
@@ -268,6 +327,9 @@ namespace StickIt
            SyncEnabled = SyncEnabled,
 				SyncFilePath = SyncFilePath?.Trim() ?? string.Empty,
 				SyncPreferences = SyncPreferences,
+            SyncMode = SyncMode,
+				SyncImportMode = SyncImportMode,
+				SyncDeviceId = SyncDeviceId,
 				LastSyncUtc = LastSyncUtc,
 				DesktopAreaLeft = DesktopAreaLeft,
 				DesktopAreaTop = DesktopAreaTop,
@@ -314,4 +376,6 @@ namespace StickIt
 	}
 
 	public sealed record Mode2ActionOption(Mode2HostMissingAction Value, string Label);
+ public sealed record SyncModeOption(SyncMode Value, string Label);
+	public sealed record SyncImportModeOption(SyncImportMode Value, string Label);
 }
