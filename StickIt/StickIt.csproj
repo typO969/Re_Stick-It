@@ -9,6 +9,9 @@
     <Platforms>AnyCPU;x64;x86</Platforms>
     <ApplicationIcon>Properties\Icons\re_stickit.ico</ApplicationIcon>
     <PackageIcon>re_stickit-icon.jpg</PackageIcon>
+    <SignAssembly>False</SignAssembly>
+    <AssemblyVersion>3.2.1.4</AssemblyVersion>
+    <FileVersion>3.2.2</FileVersion>
   </PropertyGroup>
   <ItemGroup>
     <None Remove="prefs2ThinkAbout__gather-red.png" />
