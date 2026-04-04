@@ -2,39 +2,41 @@
 
 Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, blah, blah.
 
-## So one day I was sitting in class, using an Appple and I noticed the version of 'Post-It" notes they get to use and play around with.
-## And then I looked at the (a)version that Windows has and I got super jealous! It wasn't fair that Swift programs look way more polished and dont make me feel embarrassed to use them in public.
+## So one day I was sitting in class, using an Apple and I noticed the version of 'Post-It" notes they get to use and play around with.
+## And then I looked at the version that Windows has and it lit a fire! It isn't fair that Swift programs look way more polished and dont make me feel embarrassed to use them in public.
 
-### Then the teacher got mad at me for interrupting and insanely yelling about how embarrassing the windows post-it note situation was. 
-### The professor was not impressed with my lack of arguments presented.
-### Six or eight months later I suddenly remembered that I needed to make a post-it note program for the raisins.  
+### Then the teacher got mad at me for interrupting them with yelling about how embarrassing the post-it note situation was. 
+### The professor didnt understand or was not impressed with my lack of arguments presented...  i dont recall which it was....
+### Six or eight months later I remembered that I needed to make a post-it note program for these raisins.  
 -<u>But this one would more accurately mimick the real world.</u>-
 
 ### THIS meant: 
 - no resizing
-- only the colors i could find at the store
-- you can stick your notes to any surface and they will stay there for the most part (unless you have a ton of extra monitors/screens like i do (5 total!), that coding got really difficult)
+- only the colors my eyes could find at the store
+- you can stick your notes to any surface and they will stay there for the most part
 - no videos or music! how tf would you do that in real life!?!? get real!!
+- i did add some list tmeplating to make things easier.
+- i also added support for windows ink, so now you can draw on your notes! but dont do it like mine, i cant read my handwriting.. :(
 - theres probably a bunch of other things I thought of and already forgot about too.
 
-### So, before you read the next section -OR- use the app, just keep in mind I was aiming high for realism.
+### So, before you read the next section -OR- use the app, just keep in mind I was aiming for realism.
 
-## So, then I found that f(*&ng program 'Notezilla' and saw it is anti-free and how much they they think it is worth.   
+## So, then I found that neato program 'Notezilla' and saw how free it isnt, and then i saw how much they they think it is worth.   
 
 ## I ignorantly turned and stated to a random passerby, "I can do what you do!!! You better watch out!"
 
-## I startled them so profusely that they punched me to get away--strong tactic. 
+## I startled them so profusely that they punched me to get away--strong tactic and choice on their part. 
 
-### i thought about what I had done and the response I got in return. I have to say, yes, I agree with that silent cheap-shotting-stranger: screw capitalism!
+### i thought about what I had done and the response I got in return. I have to say, "yes, I agree!" with that cheap-shotting-stranger: "screw capitalism!"
 
 #
 #
 
 ## Features
 
-- Multiple notes with independent size, position, and content
+- Multiple notes with independent color, position, and content
 - Rich text persistence (RTF + plain text fallback)
-- Auto-save with debounce (typing/move/resize safe)
+- Auto-save with debounce (typing/move safe)
 - System tray integration:
   - New note
   - Minimize/restore/show all notes
@@ -44,8 +46,7 @@ Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, 
 - Restore notes on startup (with monitor-aware placement)
 - Optional “keep notes inside desktop area”
 - Preferences for theme, taskbar/tray visibility, startup behavior, and default font
-- Note skins (built-in + user-defined)
-- Optional sticky target behavior for notes
+- ~Optional~ Required sticky target behavior for notes
 
 ## Tech Stack
 
@@ -80,32 +81,35 @@ Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, 
 
 Application state is persisted as JSON and includes:
 
-- Notes (geometry, content, title, color/skin, font, sticky metadata)
+- Notes (geometry, content, title, color, font, sticky metadata)
 - App preferences
-- User-defined skins
 
 ## Screenshots
 
-> I mean, you've seen the small squares of papeer having adhesive on them with all the wild color choices out in the real world, right? 
-> Ok, fine, I'll get around to making some screenshots sooner or later...
+> I mean, you've seen the small squares of paper having adhesive on them with all the wild color choices out in the real world, right? 
+> Ok, fine, here are some photos of post-it notes...
+<img width="500" alt="post2" src="https://github.com/user-attachments/assets/12f0eb1e-1763-475b-b0eb-9d08657bee1f" />
+<img width="500" alt="post04" src="https://github.com/user-attachments/assets/e6e07a06-56db-4659-9259-f69fc0a11cde" />
+<img width="500" alt="post01" src="https://github.com/user-attachments/assets/251c856b-da55-4c99-a538-7b3f6824320c" />
+
 
 ## Roadmap
 
-- [ ] Search/filter notes
-- [ ] Import/export notes
-- [ ] Optional cloud sync
-- [ ] Keyboard shortcut customization
+- [ ] ~Search/filter notes~  no, probably not, copilot.
+- [X] Import/export notes
+- [x] Optional cloud sync - it works if you use sync.com or something similar.
+- [ ] Keyboard shortcut customization  - *meh, we'll see.*
 
 ## Contributing
 
 - Feel free to fix any mistakes I've made (including this haircut! You're just lucky you don't have to see it).
-- Um, I wasn't originally going to make this available to the public for all the reasons, but i did, so don't make regret it by making me fix a bunch of code! 
+- Um, I wasn't originally going to make this available to the public for all the raisins, but i did, so don't make regret it by making me fix a bunch of code...
 - Insstead, just make co-pilot vibe it out.
 
 ## Conclusions
 
 - Ok, now get off your computer or phone and go outside. 
 
-- Better yet, go and ask her/him out!!
+- Go and ask her/him out.
 
-- You'll only regret it if you don't!!
+
