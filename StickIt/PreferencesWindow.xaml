@@ -338,6 +338,12 @@
                            FontSize="11"
                            Text="Manual sync only: StickIt syncs when you click Sync now." />
 
+                        <TextBlock
+                           Margin="0,4,0,0"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Text="Free cloud sync method: point Sync file to a cloud-synced folder. Verified: OneDrive, Dropbox, Google Drive, and Sync.com." />
+
                         <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
                            <Button
                               MinWidth="95"

@@ -477,12 +477,15 @@ namespace StickIt
 				return false;
 			}
 
-			var syncPath = Preferences.SyncFilePath?.Trim();
+         var syncPath = ResolveSyncPath(Preferences.SyncFilePath);
 			if (string.IsNullOrWhiteSpace(syncPath))
 			{
-				message = "Sync file is not set. Choose a .3m sync file in Preferences > Sync.";
+          message = "Sync file is not set. Choose a .3m sync file in Preferences > Sync (local path or cloud-synced folder).";
 				return false;
 			}
+
+			if (!string.Equals(_state.Preferences.SyncFilePath, syncPath, StringComparison.Ordinal))
+				_state.Preferences.SyncFilePath = syncPath;
 
 			try
 			{
@@ -669,6 +672,33 @@ namespace StickIt
 
 			_state.Preferences.SyncDeviceId = Guid.NewGuid().ToString("N");
 			return _state.Preferences.SyncDeviceId;
+		}
+
+		private static string ResolveSyncPath(string? rawPath)
+		{
+			if (string.IsNullOrWhiteSpace(rawPath))
+				return string.Empty;
+
+			var path = rawPath.Trim().Trim('"');
+			if (string.IsNullOrWhiteSpace(path))
+				return string.Empty;
+
+			path = Environment.ExpandEnvironmentVariables(path);
+
+			if (path.StartsWith("~\\", StringComparison.Ordinal))
+			{
+				var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+				path = System.IO.Path.Combine(home, path[2..]);
+			}
+
+			try
+			{
+				return System.IO.Path.GetFullPath(path);
+			}
+			catch
+			{
+				return path;
+			}
 		}
 
 

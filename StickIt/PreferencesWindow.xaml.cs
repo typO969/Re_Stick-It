@@ -17,6 +17,8 @@ namespace StickIt
 {
 	public partial class PreferencesWindow : Window
 	{
+     private delegate bool SyncOperation(out string message);
+
 		private readonly PreferencesViewModel _viewModel;
 		private bool _suppressSandboxSync;
 
@@ -88,7 +90,7 @@ namespace StickIt
 			box.Document.Blocks.Clear();
 			if (string.IsNullOrWhiteSpace(rtf))
 			{
-				box.Document.Blocks.Add(new Paragraph(new Run(fallback)));
+           ApplyFallbackRichText(box, fallback);
 				return;
 			}
 
@@ -100,9 +102,14 @@ namespace StickIt
 			}
 			catch
 			{
-				box.Document.Blocks.Clear();
-				box.Document.Blocks.Add(new Paragraph(new Run(fallback)));
+           ApplyFallbackRichText(box, fallback);
 			}
+		}
+
+		private static void ApplyFallbackRichText(System.Windows.Controls.RichTextBox box, string fallback)
+		{
+			box.Document.Blocks.Clear();
+			box.Document.Blocks.Add(new Paragraph(new Run(fallback)));
 		}
 
 		private static string GetRichText(System.Windows.Controls.RichTextBox box)
@@ -142,49 +149,107 @@ namespace StickIt
 					: Path.GetFileName(_viewModel.SyncFilePath)
 			};
 
-			if (!string.IsNullOrWhiteSpace(_viewModel.SyncFilePath))
-				dlg.InitialDirectory = Path.GetDirectoryName(_viewModel.SyncFilePath);
+        var initialDirectory = TryGetExistingDirectory(_viewModel.SyncFilePath) ?? GetPreferredSyncBrowseDirectory();
+			if (!string.IsNullOrWhiteSpace(initialDirectory))
+				dlg.InitialDirectory = initialDirectory;
 
 			if (dlg.ShowDialog(this) == true)
 				_viewModel.SyncFilePath = dlg.FileName;
 		}
 
-		private void SyncNow_Click(object sender, RoutedEventArgs e)
+		private static string? TryGetExistingDirectory(string? filePath)
+		{
+			if (string.IsNullOrWhiteSpace(filePath))
+				return null;
+
+			try
+			{
+				var directory = Path.GetDirectoryName(filePath);
+				return !string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory)
+					? directory
+					: null;
+			}
+			catch
+			{
+				return null;
+			}
+		}
+
+		private static string? GetPreferredSyncBrowseDirectory()
+		{
+			foreach (var candidate in GetCloudSyncFolderCandidates())
+			{
+				if (!string.IsNullOrWhiteSpace(candidate) && Directory.Exists(candidate))
+					return candidate;
+			}
+
+			return null;
+		}
+
+		private static string?[] GetCloudSyncFolderCandidates()
+		{
+			var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+			var oneDrive = Environment.GetEnvironmentVariable("OneDrive");
+			var oneDriveConsumer = Environment.GetEnvironmentVariable("OneDriveConsumer");
+			var oneDriveCommercial = Environment.GetEnvironmentVariable("OneDriveCommercial");
+
+			return
+			[
+				oneDrive,
+				oneDriveConsumer,
+				oneDriveCommercial,
+				Path.Combine(userProfile, "OneDrive"),
+				Path.Combine(userProfile, "Dropbox"),
+				Path.Combine(userProfile, "Google Drive"),
+				Path.Combine(userProfile, "My Drive")
+			];
+		}
+
+		private void ExecuteSync(SyncOperation operation, string title)
 		{
 			ApplyChanges();
-			if (AppInstance.TrySyncNow(out var message))
-          System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
-			else
-           System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
+			var ok = operation(out var message);
+			System.Windows.MessageBox.Show(
+				this,
+				message,
+				title,
+				MessageBoxButton.OK,
+				ok ? MessageBoxImage.Information : MessageBoxImage.Warning);
 
 			_viewModel.LastSyncUtc = AppInstance.Preferences.LastSyncUtc;
+		}
+
+		private void SyncNow_Click(object sender, RoutedEventArgs e)
+		{
+         ExecuteSync(AppInstance.TrySyncNow, "Sync");
 		}
 
 		private void PullSync_Click(object sender, RoutedEventArgs e)
 		{
-			ApplyChanges();
-			if (AppInstance.TryPullFromSync(out var message))
-				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
-			else
-				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
-
-			_viewModel.LastSyncUtc = AppInstance.Preferences.LastSyncUtc;
+         ExecuteSync(AppInstance.TryPullFromSync, "Sync");
 		}
 
 		private void PushSync_Click(object sender, RoutedEventArgs e)
 		{
-			ApplyChanges();
-			if (AppInstance.TryPushToSync(out var message))
-				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
-			else
-				System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
-
-			_viewModel.LastSyncUtc = AppInstance.Preferences.LastSyncUtc;
+         ExecuteSync(AppInstance.TryPushToSync, "Sync");
 		}
 	}
 
 	public sealed class PreferencesViewModel : INotifyPropertyChanged
 	{
+     private static System.Windows.Media.FontFamily ResolveFontFamily(string? source, string fallback)
+		{
+			var candidate = string.IsNullOrWhiteSpace(source) ? fallback : source;
+			try
+			{
+				return new System.Windows.Media.FontFamily(candidate);
+			}
+			catch
+			{
+				return new System.Windows.Media.FontFamily(fallback);
+			}
+		}
+
 		public ObservableCollection<System.Windows.Media.FontFamily> FontFamilies { get; }
 		public ObservableCollection<double> FontSizes { get; }
       public ObservableCollection<Mode2ActionOption> Mode2HostMissingActions { get; }
@@ -218,7 +283,7 @@ namespace StickIt
 
 		public Mode2ActionOption SelectedMode2HostMissingAction
 		{
-			get => Mode2HostMissingActions.First(o => o.Value == Mode2HostMissingAction);
+       get => Mode2HostMissingActions.FirstOrDefault(o => o.Value == Mode2HostMissingAction) ?? Mode2HostMissingActions.First();
 			set => Mode2HostMissingAction = value?.Value ?? Mode2HostMissingAction.SwitchToMode1;
 		}
 
@@ -253,13 +318,13 @@ namespace StickIt
 		private string SyncDeviceId { get => _syncDeviceId; set => SetField(ref _syncDeviceId, value); }
 		public SyncModeOption SelectedSyncMode
 		{
-			get => SyncModes.First(o => o.Value == SyncMode);
+        get => SyncModes.FirstOrDefault(o => o.Value == SyncMode) ?? SyncModes.First();
 			set => SyncMode = value?.Value ?? SyncMode.PreferPullFromOtherDevice;
 		}
 
 		public SyncImportModeOption SelectedSyncImportMode
 		{
-			get => SyncImportModes.First(o => o.Value == SyncImportMode);
+        get => SyncImportModes.FirstOrDefault(o => o.Value == SyncImportMode) ?? SyncImportModes.First();
 			set => SyncImportMode = value?.Value ?? SyncImportMode.ReplaceCurrentNotes;
 		}
 		public DateTime? LastSyncUtc { get => _lastSyncUtc; set => SetField(ref _lastSyncUtc, value); }
@@ -353,6 +418,8 @@ namespace StickIt
 
 		public static PreferencesViewModel FromPreferences(AppPreferences prefs)
 		{
+         prefs ??= new AppPreferences();
+
 			var vm = new PreferencesViewModel
 			{
 				RunOnStartup = prefs.RunOnStartup,
@@ -369,11 +436,11 @@ namespace StickIt
 				Mode2MinimizeWithHost = prefs.Mode2MinimizeWithHost,
 				Mode2CloseNoteWhenHostCloses = prefs.Mode2CloseNoteWhenHostCloses,
 				Mode2HostMissingAction = prefs.Mode2HostMissingAction,
-				TitleFontFamily = new System.Windows.Media.FontFamily(prefs.TitleFontFamily),
-				TitleFontSize = prefs.TitleFontSize,
+          TitleFontFamily = ResolveFontFamily(prefs.TitleFontFamily, "Helvetica"),
+				TitleFontSize = prefs.TitleFontSize > 0 ? prefs.TitleFontSize : 19.0,
             TitleFontBold = prefs.TitleFontBold,
-				BodyFontFamily = new System.Windows.Media.FontFamily(prefs.BodyFontFamily),
-				BodyFontSize = prefs.BodyFontSize,
+            BodyFontFamily = ResolveFontFamily(prefs.BodyFontFamily, "Segoe UI"),
+				BodyFontSize = prefs.BodyFontSize > 0 ? prefs.BodyFontSize : 14.0,
 				ShowDateAlongTitle = prefs.ShowDateAlongTitle,
 				EnableDropShadow = prefs.EnableDropShadow,
            EnableNoteBorders = prefs.EnableNoteBorders,
@@ -423,11 +490,11 @@ namespace StickIt
 				Mode2MinimizeWithHost = Mode2MinimizeWithHost,
 				Mode2CloseNoteWhenHostCloses = Mode2CloseNoteWhenHostCloses,
 				Mode2HostMissingAction = Mode2HostMissingAction,
-				TitleFontFamily = TitleFontFamily.Source,
-				TitleFontSize = TitleFontSize,
+          TitleFontFamily = string.IsNullOrWhiteSpace(TitleFontFamily?.Source) ? "Helvetica" : TitleFontFamily.Source,
+				TitleFontSize = TitleFontSize > 0 ? TitleFontSize : 19.0,
             TitleFontBold = TitleFontBold,
-				BodyFontFamily = BodyFontFamily.Source,
-				BodyFontSize = BodyFontSize,
+            BodyFontFamily = string.IsNullOrWhiteSpace(BodyFontFamily?.Source) ? "Segoe UI" : BodyFontFamily.Source,
+				BodyFontSize = BodyFontSize > 0 ? BodyFontSize : 14.0,
 				ShowDateAlongTitle = ShowDateAlongTitle,
 				EnableDropShadow = EnableDropShadow,
            EnableNoteBorders = EnableNoteBorders,

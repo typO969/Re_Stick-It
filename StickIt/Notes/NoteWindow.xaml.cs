@@ -51,6 +51,22 @@ namespace StickIt
       private static double PointsToDip(double pt) => pt * 96.0 / 72.0; // pt * 4/3
       private static double DipToPoints(double dip) => dip * 72.0 / 96.0;
 
+      private static double NormalizeFontSize(double size, double fallback = 14.0)
+         => size > 0 ? size : fallback;
+
+      private static System.Windows.Media.FontFamily CreateSafeFontFamily(string? familyName, string fallback = "Segoe UI")
+      {
+         var preferred = string.IsNullOrWhiteSpace(familyName) ? fallback : familyName;
+         try
+         {
+            return new System.Windows.Media.FontFamily(preferred);
+         }
+         catch
+         {
+            return new System.Windows.Media.FontFamily(fallback);
+         }
+      }
+
       private bool _suppressTextChanged;
       private bool _suppressAutoListHandling;
       private bool _dropShadowEnabled = true;
@@ -61,6 +77,8 @@ namespace StickIt
       private string _autoListBulletSymbol = "•";
       private int _autoListSpacesAfterMarker = 1;
       private string _autoListNumberSuffix = ".";
+      private const int MaxConsecutiveEmptyListEnterBeforeStop = 2;
+      private int _consecutiveEmptyListEnterCount;
       private string _autoListBulletTemplateRtf = string.Empty;
       private string _autoListNumberTemplateRtf = string.Empty;
       private bool _enableTodoTitleTrigger;
@@ -89,6 +107,9 @@ namespace StickIt
       private const double InkToolbarSnapDistance = 24.0;
       private const double SnapGridSizeDefault = 20.0;
       private const double SnapGridSizeLowResolution = 16.0;
+      private static readonly Regex BulletTriggerRegex = new(@"^(\s*)([-*+])\s*(.*)$", RegexOptions.Compiled);
+      private static readonly Regex NumberTriggerRegex = new(@"^(\s*)(\d+)([\.)])?\s*(.*)$", RegexOptions.Compiled);
+      private static readonly Regex HashTriggerRegex = new(@"^(\s*)#\s*(.*)$", RegexOptions.Compiled);
 
       private enum InkToolbarDock
       {
@@ -441,6 +462,16 @@ namespace StickIt
                }
             }
 
+            if (e.Key == Key.Back
+               && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift | ModifierKeys.Alt)) == ModifierKeys.None)
+            {
+               if (TryHandleBackspaceOnEmptyListItem())
+               {
+                  e.Handled = true;
+                  return;
+               }
+            }
+
             var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
             if (ctrl && (e.Key == Key.Z || e.Key == Key.Y))
                NoteUndoRedoRequested?.Invoke(this, EventArgs.Empty);
@@ -667,16 +698,19 @@ namespace StickIt
          var sel = txtNoteContent.Selection;
          var range = new TextRange(sel.Start, sel.End); // empty selection => typing style only
 
-         range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily(familyName));
-         range.ApplyPropertyValue(TextElement.FontSizeProperty, sizeDip);
+         var fontFamily = CreateSafeFontFamily(familyName);
+         var normalizedSize = NormalizeFontSize(sizeDip, _note?.FontSize > 0 ? _note.FontSize : 14.0);
+
+         range.ApplyPropertyValue(TextElement.FontFamilyProperty, fontFamily);
+         range.ApplyPropertyValue(TextElement.FontSizeProperty, normalizedSize);
          range.ApplyPropertyValue(TextElement.FontWeightProperty, bold ? FontWeights.Bold : FontWeights.Normal);
          range.ApplyPropertyValue(TextElement.FontStyleProperty, italic ? FontStyles.Italic : FontStyles.Normal);
 
          // Persist per-note defaults (store DIPs)
          if (_note != null)
          {
-            _note.FontFamily = familyName;
-            _note.FontSize = sizeDip;
+            _note.FontFamily = fontFamily.Source;
+            _note.FontSize = normalizedSize;
          }
 
          NoteTextChanged?.Invoke(this, EventArgs.Empty);
@@ -1103,16 +1137,17 @@ namespace StickIt
          // Selection empty => applies to caret typing style (does NOT reformat whole note)
          TextRange range = new TextRange(sel.Start, sel.End);
 
-         double sizeDip = PointsToDip(sizePt);
+         double sizeDip = NormalizeFontSize(PointsToDip(sizePt), _note?.FontSize > 0 ? _note.FontSize : 14.0);
+         var fontFamily = CreateSafeFontFamily(familyName);
 
-         range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily(familyName));
-         range.ApplyPropertyValue(TextElement.FontSizeProperty, sizePt);
+         range.ApplyPropertyValue(TextElement.FontFamilyProperty, fontFamily);
+         range.ApplyPropertyValue(TextElement.FontSizeProperty, sizeDip);
          range.ApplyPropertyValue(TextElement.FontWeightProperty, bold ? FontWeights.Bold : FontWeights.Normal);
          range.ApplyPropertyValue(TextElement.FontStyleProperty, italic ? FontStyles.Italic : FontStyles.Normal);
 
          // Persist per-note defaults
-         _note!.FontFamily = familyName;
-         _note!.FontSize = sizePt;
+         _note!.FontFamily = fontFamily.Source;
+         _note!.FontSize = sizeDip;
 
          NoteTextChanged?.Invoke(this, EventArgs.Empty);
       }
@@ -1124,7 +1159,7 @@ namespace StickIt
 
          // fallbacks
          string familyName = string.IsNullOrWhiteSpace(_note.FontFamily) ? "Segoe UI" : _note.FontFamily;
-         double sizePt = (_note.FontSize > 0) ? _note.FontSize : 12.0;
+         double sizePt = NormalizeFontSize(_note.FontSize, 12.0);
 
          var rtb = txtNoteContent;
 
@@ -1137,7 +1172,7 @@ namespace StickIt
          start = start.GetInsertionPosition(LogicalDirection.Forward) ?? rtb.Document.ContentStart;
 
          var range = new TextRange(start, start); // empty range == typing style only
-         range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily(familyName));
+         range.ApplyPropertyValue(TextElement.FontFamilyProperty, CreateSafeFontFamily(familyName));
          range.ApplyPropertyValue(TextElement.FontSizeProperty, sizePt);
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
          ApplyDefaultInkAttributes();
@@ -1215,8 +1250,20 @@ namespace StickIt
          var textPosition = txtNoteContent.GetPositionFromPoint(clickPoint, true);
          if (textPosition != null)
          {
-            txtNoteContent.CaretPosition = textPosition;
-            txtNoteContent.Selection.Select(textPosition, textPosition);
+            var selection = txtNoteContent.Selection;
+            var selectionStart = selection.Start;
+            var selectionEnd = selection.End;
+
+            var clickedInsideSelection = selectionStart != null
+               && selectionEnd != null
+               && textPosition.CompareTo(selectionStart) >= 0
+               && textPosition.CompareTo(selectionEnd) <= 0;
+
+            if (!clickedInsideSelection)
+            {
+               txtNoteContent.CaretPosition = textPosition;
+               txtNoteContent.Selection.Select(textPosition, textPosition);
+            }
          }
 
          e.Handled = true;
@@ -1555,6 +1602,16 @@ namespace StickIt
          if (settings == null)
             return;
 
+         var fontFamilyName = string.IsNullOrWhiteSpace(settings.FontFamily)
+            ? (_note?.FontFamily ?? "Segoe UI")
+            : settings.FontFamily;
+         var fontFamily = CreateSafeFontFamily(fontFamilyName);
+
+         var fontSize = settings.FontSize > 0
+            ? settings.FontSize
+            : (_note?.FontSize > 0 ? _note.FontSize : 14.0);
+         var normalizedFontSize = NormalizeFontSize(fontSize, 14.0);
+
          TextRange range;
 
          if (settings.ApplyToSelection)
@@ -1567,19 +1624,17 @@ namespace StickIt
          }
          else
          {
-            TextPointer start = txtNoteContent.CaretPosition ?? txtNoteContent.Document.ContentStart;
-            start = start.GetInsertionPosition(LogicalDirection.Forward) ?? txtNoteContent.Document.ContentStart;
-            range = new TextRange(start, start);
+            range = new TextRange(txtNoteContent.Document.ContentStart, txtNoteContent.Document.ContentEnd);
 
             if (_note != null)
             {
-               _note.FontFamily = settings.FontFamily;
-               _note.FontSize = settings.FontSize;
+               _note.FontFamily = fontFamily.Source;
+               _note.FontSize = normalizedFontSize;
             }
          }
 
-         range.ApplyPropertyValue(TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily(settings.FontFamily));
-         range.ApplyPropertyValue(TextElement.FontSizeProperty, settings.FontSize);
+         range.ApplyPropertyValue(TextElement.FontFamilyProperty, fontFamily);
+         range.ApplyPropertyValue(TextElement.FontSizeProperty, normalizedFontSize);
          range.ApplyPropertyValue(TextElement.FontWeightProperty, settings.IsBold ? FontWeights.Bold : FontWeights.Normal);
          range.ApplyPropertyValue(TextElement.FontStyleProperty, settings.IsItalic ? FontStyles.Italic : FontStyles.Normal);
          range.ApplyPropertyValue(Inline.TextDecorationsProperty, settings.IsUnderline ? TextDecorations.Underline : null);
@@ -2418,9 +2473,6 @@ namespace StickIt
          if (current == null || previous == null)
             return;
 
-         if (TryHandleBulletRevert(previous, current))
-            return;
-
          if (TryFormatBulletPair(previous, current))
             return;
 
@@ -2432,28 +2484,63 @@ namespace StickIt
          if (!_autoListFormattingEnabled || txtNoteContent == null)
             return false;
 
+         if (!txtNoteContent.Selection.IsEmpty)
+         {
+            _consecutiveEmptyListEnterCount = 0;
+            return false;
+         }
+
          var current = txtNoteContent.CaretPosition?.Paragraph;
          if (current == null)
+         {
+            _consecutiveEmptyListEnterCount = 0;
             return false;
+         }
 
          var text = GetParagraphText(current);
          var spacing = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
 
          string? nextPrefix = null;
          bool isNumbered = false;
+         string currentContent = string.Empty;
 
-         if (TryParseFormattedBulletLine(text, out var bulletIndent, out _))
+         if (TryParseFormattedBulletLine(text, out var bulletIndent, out var bulletContent))
          {
             nextPrefix = $"{bulletIndent}{_autoListBulletSymbol}{spacing}";
+            currentContent = bulletContent;
          }
-         else if (TryParseFormattedNumberLine(text, out var numberIndent, out var currentNumber, out _))
+         else if (TryParseFormattedNumberLine(text, out var numberIndent, out var currentNumber, out var numberContent))
          {
             nextPrefix = $"{numberIndent}{currentNumber + 1}{_autoListNumberSuffix}{spacing}";
             isNumbered = true;
+            currentContent = numberContent;
          }
 
          if (nextPrefix == null)
+         {
+            _consecutiveEmptyListEnterCount = 0;
             return false;
+         }
+
+         if (!IsCaretAtParagraphEnd(current))
+         {
+            _consecutiveEmptyListEnterCount = 0;
+            return false;
+         }
+
+         if (string.IsNullOrWhiteSpace(currentContent))
+         {
+            _consecutiveEmptyListEnterCount++;
+            if (_consecutiveEmptyListEnterCount >= MaxConsecutiveEmptyListEnterBeforeStop)
+            {
+               _consecutiveEmptyListEnterCount = 0;
+               return false;
+            }
+         }
+         else
+         {
+            _consecutiveEmptyListEnterCount = 0;
+         }
 
          _suppressAutoListHandling = true;
          try
@@ -2464,9 +2551,17 @@ namespace StickIt
             if (next == null)
                return true;
 
-            SetParagraphText(next, nextPrefix, isNumbered);
+            var carriedText = GetParagraphText(next);
+            var nextText = string.IsNullOrWhiteSpace(carriedText)
+               ? nextPrefix
+               : $"{nextPrefix}{carriedText}";
 
-            var caret = next.ContentEnd.GetInsertionPosition(LogicalDirection.Backward) ?? next.ContentEnd;
+            SetParagraphText(next, nextText, isNumbered);
+
+            var caret = GetCaretAfterPrefix(next, nextPrefix.Length)
+               ?? next.ContentEnd.GetInsertionPosition(LogicalDirection.Backward)
+               ?? next.ContentEnd;
+
             txtNoteContent.Selection.Select(caret, caret);
             new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
          }
@@ -2475,6 +2570,55 @@ namespace StickIt
             _suppressAutoListHandling = false;
          }
 
+         return true;
+      }
+
+      private bool IsCaretAtParagraphEnd(Paragraph paragraph)
+      {
+         if (txtNoteContent?.CaretPosition == null)
+            return false;
+
+         var paragraphEnd = paragraph.ContentEnd.GetInsertionPosition(LogicalDirection.Backward) ?? paragraph.ContentEnd;
+         return txtNoteContent.CaretPosition.CompareTo(paragraphEnd) >= 0;
+      }
+
+      private static TextPointer? GetCaretAfterPrefix(Paragraph paragraph, int prefixLength)
+      {
+         var run = paragraph.Inlines.OfType<Run>().FirstOrDefault();
+         if (run == null)
+            return paragraph.ContentStart.GetInsertionPosition(LogicalDirection.Forward) ?? paragraph.ContentStart;
+
+         var runStart = run.ContentStart.GetInsertionPosition(LogicalDirection.Forward) ?? run.ContentStart;
+         var safeOffset = Math.Max(0, Math.Min(prefixLength, run.Text?.Length ?? 0));
+         var target = runStart.GetPositionAtOffset(safeOffset, LogicalDirection.Forward);
+
+         return target?.GetInsertionPosition(LogicalDirection.Forward)
+            ?? run.ContentEnd.GetInsertionPosition(LogicalDirection.Backward)
+            ?? run.ContentEnd;
+      }
+
+      private bool TryHandleBackspaceOnEmptyListItem()
+      {
+         if (!_autoListFormattingEnabled || txtNoteContent == null || !txtNoteContent.Selection.IsEmpty)
+            return false;
+
+         var paragraph = txtNoteContent.CaretPosition?.Paragraph;
+         if (paragraph == null)
+            return false;
+
+         if (!IsCaretAtParagraphEnd(paragraph))
+            return false;
+
+         var text = GetParagraphText(paragraph);
+         var isEmptyBullet = TryParseFormattedBulletLine(text, out _, out var bulletContent) && string.IsNullOrWhiteSpace(bulletContent);
+         var isEmptyNumber = TryParseFormattedNumberLine(text, out _, out _, out var numberContent) && string.IsNullOrWhiteSpace(numberContent);
+
+         if (!isEmptyBullet && !isEmptyNumber)
+            return false;
+
+         SetParagraphText(paragraph, string.Empty, isNumbered: false);
+         var caret = paragraph.ContentStart.GetInsertionPosition(LogicalDirection.Forward) ?? paragraph.ContentStart;
+         txtNoteContent.Selection.Select(caret, caret);
          return true;
       }
 
@@ -2497,10 +2641,18 @@ namespace StickIt
 
       private bool TryFormatBulletPair(Paragraph previous, Paragraph current)
       {
-         if (!TryParseBulletTrigger(GetParagraphText(previous), out var prevIndent, out var prevMarker, out var prevContent))
+         var previousText = GetParagraphText(previous);
+         var currentText = GetParagraphText(current);
+
+         if (TryParseFormattedBulletLine(previousText, out var existingPrevIndent, out _)
+            && TryParseFormattedBulletLine(currentText, out var existingCurrIndent, out _)
+            && string.Equals(existingPrevIndent, existingCurrIndent, StringComparison.Ordinal))
             return false;
 
-         if (!TryParseBulletTrigger(GetParagraphText(current), out var currIndent, out var currMarker, out var currContent))
+         if (!TryParseBulletTrigger(previousText, out var prevIndent, out var prevMarker, out var prevContent))
+            return false;
+
+         if (!TryParseBulletTrigger(currentText, out var currIndent, out var currMarker, out var currContent))
             return false;
 
          if (prevMarker != currMarker || !string.Equals(prevIndent, currIndent, StringComparison.Ordinal))
@@ -2525,6 +2677,12 @@ namespace StickIt
       {
          var prevText = GetParagraphText(previous);
          var currText = GetParagraphText(current);
+
+         if (TryParseFormattedNumberLine(prevText, out var existingPrevIndent, out var existingPrevNumber, out _)
+            && TryParseFormattedNumberLine(currText, out var existingCurrIndent, out var existingCurrNumber, out _)
+            && string.Equals(existingPrevIndent, existingCurrIndent, StringComparison.Ordinal)
+            && existingCurrNumber == existingPrevNumber + 1)
+            return false;
 
          if (TryParseHashTrigger(prevText, out var prevHashIndent, out var prevHashContent)
             && TryParseHashTrigger(currText, out var currHashIndent, out var currHashContent)
@@ -2569,7 +2727,7 @@ namespace StickIt
          if (string.IsNullOrWhiteSpace(text))
             return false;
 
-         var match = Regex.Match(text, @"^(\s*)([-*+])\s*(.*)$");
+         var match = BulletTriggerRegex.Match(text);
          if (!match.Success)
             return false;
 
@@ -2587,7 +2745,7 @@ namespace StickIt
          if (string.IsNullOrWhiteSpace(text))
             return false;
 
-          var match = Regex.Match(text, @"^(\s*)(\d+)([\.|\)])?\s*(.*)$");
+          var match = NumberTriggerRegex.Match(text);
           if (!match.Success)
              return false;
 
@@ -2606,7 +2764,7 @@ namespace StickIt
          if (string.IsNullOrWhiteSpace(text))
             return false;
 
-         var match = Regex.Match(text, @"^(\s*)#\s*(.*)$");
+         var match = HashTriggerRegex.Match(text);
          if (!match.Success)
             return false;
 
