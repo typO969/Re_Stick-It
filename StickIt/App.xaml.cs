@@ -780,7 +780,7 @@ namespace StickIt
 				AppDomain.CurrentDomain.BaseDirectory,
 				"Properties",
 				"Icons",
-				"stickIt_Main.ico");
+          "re_stickit.ico");
 
 			if (!System.IO.File.Exists(iconPath))
 				return;
