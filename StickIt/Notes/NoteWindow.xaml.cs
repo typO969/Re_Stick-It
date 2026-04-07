@@ -35,6 +35,8 @@ namespace StickIt
       private int _noteStuckMode = 0;
       private double? _stickyOffsetXPx;
       private double? _stickyOffsetYPx;
+      private double? _stickyTargetAnchorXPx;
+      private double? _stickyTargetAnchorYPx;
 
       private readonly DispatcherTimer _followTimer = new DispatcherTimer();
       private double? _lastTargetX;
@@ -198,6 +200,22 @@ namespace StickIt
          return new System.Windows.Point(dip.X * Math.Max(0.01, dpi.DpiScaleX), dip.Y * Math.Max(0.01, dpi.DpiScaleY));
       }
 
+      private System.Windows.Point GetNoteCenterPx()
+      {
+         var topLeft = GetNoteTopLeftPx();
+         var dpi = VisualTreeHelper.GetDpi(this);
+         var halfWidthPx = Math.Max(1, Width * Math.Max(0.01, dpi.DpiScaleX)) / 2.0;
+         var halfHeightPx = Math.Max(1, Height * Math.Max(0.01, dpi.DpiScaleY)) / 2.0;
+         return new System.Windows.Point(topLeft.X + halfWidthPx, topLeft.Y + halfHeightPx);
+      }
+
+      private void UpdateStickyTargetAnchorFromCurrentNote()
+      {
+         var center = GetNoteCenterPx();
+         _stickyTargetAnchorXPx = center.X;
+         _stickyTargetAnchorYPx = center.Y;
+      }
+
       public string? GetInkIsfBase64()
       {
          if (inkLayer == null || inkLayer.Strokes.Count == 0)
@@ -220,7 +238,10 @@ namespace StickIt
 
       private bool TryEnterMode2DesktopFallback()
       {
-         var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
+         var center = GetNoteCenterPx();
+         var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTargetAtPoint(
+            (int)Math.Round(center.X),
+            (int)Math.Round(center.Y));
          if (desk != null && desk.Hwnd != IntPtr.Zero)
             return EnterStuckMode2WithTarget(desk, allowDesktopFallback: false);
 
@@ -234,6 +255,8 @@ namespace StickIt
          _stickyTarget = null;
          _stickyOffsetXPx = null;
          _stickyOffsetYPx = null;
+         _stickyTargetAnchorXPx = null;
+         _stickyTargetAnchorYPx = null;
          StopHook();
          AppInstance.QueueSaveFromWindow();
          return false;
@@ -1757,11 +1780,23 @@ namespace StickIt
          int newX = (int)(tr.X + (int)Math.Round(_stickyOffsetXPx.Value));
          int newY = (int)(tr.Y + (int)Math.Round(_stickyOffsetYPx.Value));
 
-         // Clamp to virtual desktop in physical pixels so it can’t disappear
-         var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
          var dpi = VisualTreeHelper.GetDpi(this);
          var noteWidthPx = (int)Math.Round(Math.Max(1, Width * Math.Max(0.01, dpi.DpiScaleX)));
          var noteHeightPx = (int)Math.Round(Math.Max(1, Height * Math.Max(0.01, dpi.DpiScaleY)));
+
+         // Keep some overlap with target so note cannot drift/stick outside the host bounds.
+         int overlapMinX = (int)Math.Round(tr.X) - noteWidthPx + 1;
+         int overlapMaxX = (int)Math.Round(tr.X) + (int)Math.Max(1, Math.Round(tr.Width)) - 1;
+         int overlapMinY = (int)Math.Round(tr.Y) - noteHeightPx + 1;
+         int overlapMaxY = (int)Math.Round(tr.Y) + (int)Math.Max(1, Math.Round(tr.Height)) - 1;
+
+         if (newX < overlapMinX) newX = overlapMinX;
+         if (newX > overlapMaxX) newX = overlapMaxX;
+         if (newY < overlapMinY) newY = overlapMinY;
+         if (newY > overlapMaxY) newY = overlapMaxY;
+
+         // Clamp to virtual desktop in physical pixels so it can’t disappear
+         var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
 
          int minX = vs.Left;
          int minY = vs.Top;
@@ -1836,6 +1871,8 @@ namespace StickIt
             _stickyTarget = null;
             _stickyOffsetXPx = null;
             _stickyOffsetYPx = null;
+            _stickyTargetAnchorXPx = null;
+            _stickyTargetAnchorYPx = null;
             return;
          }
 
@@ -1851,6 +1888,8 @@ namespace StickIt
 
          _stickyOffsetXPx = p.OffsetX;
          _stickyOffsetYPx = p.OffsetY;
+         _stickyTargetAnchorXPx = p.TargetAnchorX;
+         _stickyTargetAnchorYPx = p.TargetAnchorY;
       }
 
 
@@ -1866,7 +1905,9 @@ namespace StickIt
             ClassName = _stickyTarget.ClassName,
             CapturedUtc = _stickyTarget.CapturedUtc,
             OffsetX = _stickyOffsetXPx,
-            OffsetY = _stickyOffsetYPx
+            OffsetY = _stickyOffsetYPx,
+            TargetAnchorX = _stickyTargetAnchorXPx,
+            TargetAnchorY = _stickyTargetAnchorYPx
          };
       }
 
@@ -1877,6 +1918,8 @@ namespace StickIt
          _stickyTarget = null;
          _stickyOffsetXPx = null;
          _stickyOffsetYPx = null;
+         _stickyTargetAnchorXPx = null;
+         _stickyTargetAnchorYPx = null;
       }
 
 
@@ -1903,7 +1946,9 @@ namespace StickIt
 
             // offsets are irrelevant to rebind, but keep them if present
             OffsetX = _stickyOffsetXPx,
-            OffsetY = _stickyOffsetYPx
+            OffsetY = _stickyOffsetYPx,
+            TargetAnchorX = _stickyTargetAnchorXPx,
+            TargetAnchorY = _stickyTargetAnchorYPx
          };
 
          var resolved = StickIt.Sticky.StickyTargetResolver.TryResolve(p);
@@ -1943,6 +1988,7 @@ namespace StickIt
          try
          {
          _stickyTarget = target;
+         UpdateStickyTargetAnchorFromCurrentNote();
 
          var isDesktopTarget = IsDesktopLikeTarget(target);
 
@@ -2031,13 +2077,19 @@ namespace StickIt
          var noteTopLeftPx = GetNoteTopLeftPx();
          var dpi = VisualTreeHelper.GetDpi(this);
 
+         var insetX = Math.Max(6.0, Math.Min(24.0, Width / 4.0));
+         var insetY = Math.Max(6.0, Math.Min(24.0, Height / 4.0));
+
+         var maxX = Math.Max(0, Width - insetX);
+         var maxY = Math.Max(0, Height - insetY);
+
          var samplePoints = new[]
          {
-            new System.Windows.Point(Math.Max(24, Width * 0.50), Math.Max(48, Height * 0.50)),
-            new System.Windows.Point(24, 48),
-            new System.Windows.Point(Math.Max(24, Width - 24), 48),
-            new System.Windows.Point(24, Math.Max(48, Height - 24)),
-            new System.Windows.Point(Math.Max(24, Width - 24), Math.Max(48, Height - 24))
+            new System.Windows.Point(Width * 0.50, Height * 0.50),
+            new System.Windows.Point(insetX, insetY),
+            new System.Windows.Point(maxX, insetY),
+            new System.Windows.Point(insetX, maxY),
+            new System.Windows.Point(maxX, maxY)
          };
 
          foreach (var sample in samplePoints)
@@ -2275,6 +2327,7 @@ namespace StickIt
          var notePx = GetNoteTopLeftPx();
          _stickyOffsetXPx = notePx.X - tr.X;
          _stickyOffsetYPx = notePx.Y - tr.Y;
+         UpdateStickyTargetAnchorFromCurrentNote();
          _lastTargetX = null;
          _lastTargetY = null;
       }
@@ -2296,10 +2349,10 @@ namespace StickIt
          var hostWidth = tr.Width / sx;
          var hostHeight = tr.Height / sy;
 
-         var minLeft = hostLeft;
-         var minTop = hostTop;
-         var maxLeft = hostLeft + Math.Max(0, hostWidth - Width);
-         var maxTop = hostTop + Math.Max(0, hostHeight - Height);
+         var minLeft = hostLeft - Width + 1;
+         var minTop = hostTop - Height + 1;
+         var maxLeft = hostLeft + Math.Max(1, hostWidth) - 1;
+         var maxTop = hostTop + Math.Max(1, hostHeight) - 1;
 
          Left = Math.Max(minLeft, Math.Min(maxLeft, Left));
          Top = Math.Max(minTop, Math.Min(maxTop, Top));
@@ -2342,6 +2395,8 @@ namespace StickIt
          _stickyTarget = null;
          _stickyOffsetXPx = null;
          _stickyOffsetYPx = null;
+         _stickyTargetAnchorXPx = null;
+         _stickyTargetAnchorYPx = null;
          AppInstance.QueueSaveFromWindow();
       }
 
@@ -2352,6 +2407,8 @@ namespace StickIt
          _stickyTarget = null;
          _stickyOffsetXPx = null;
          _stickyOffsetYPx = null;
+         _stickyTargetAnchorXPx = null;
+         _stickyTargetAnchorYPx = null;
          AppInstance.QueueSaveFromWindow();
          StopHook();
       }
@@ -2865,7 +2922,7 @@ namespace StickIt
 
       private void ApplyParagraphTemplateStyle(Paragraph paragraph, string? templateRtf, string text)
       {
-         var style = ExtractTemplateStyle(templateRtf);
+         var style = ExtractTemplateStyle(paragraph, templateRtf);
          paragraph.Margin = style.Margin;
          paragraph.TextIndent = style.TextIndent;
 
@@ -2887,9 +2944,9 @@ namespace StickIt
          paragraph.Inlines.Add(run);
       }
 
-      private ListTemplateStyle ExtractTemplateStyle(string? templateRtf)
+      private ListTemplateStyle ExtractTemplateStyle(Paragraph paragraph, string? templateRtf)
       {
-         var style = new ListTemplateStyle();
+         var style = ExtractCurrentParagraphStyle(paragraph);
          if (string.IsNullOrWhiteSpace(templateRtf))
             return style;
 
@@ -2922,6 +2979,27 @@ namespace StickIt
             // keep defaults
          }
 
+         return style;
+      }
+
+      private static ListTemplateStyle ExtractCurrentParagraphStyle(Paragraph paragraph)
+      {
+         var style = new ListTemplateStyle
+         {
+            Margin = paragraph.Margin,
+            TextIndent = paragraph.TextIndent
+         };
+
+         var sampleRun = paragraph.Inlines.OfType<Run>().FirstOrDefault();
+         if (sampleRun == null)
+            return style;
+
+         style.FontFamily = sampleRun.FontFamily;
+         style.FontSize = sampleRun.FontSize;
+         style.FontWeight = sampleRun.FontWeight;
+         style.FontStyle = sampleRun.FontStyle;
+         style.TextDecorations = sampleRun.TextDecorations;
+         style.Foreground = sampleRun.Foreground;
          return style;
       }
 

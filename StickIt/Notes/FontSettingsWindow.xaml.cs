@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
+using StickIt.Converters;
 using StickIt.Services;
 
 namespace StickIt
@@ -337,19 +338,52 @@ namespace StickIt
 			};
 		}
 
-		public static readonly ColorItem[] Defaults =
+      public static readonly ColorItem[] Defaults = BuildDefaults();
+
+		private static ColorItem[] BuildDefaults()
 		{
-			FromColor("Black", System.Windows.Media.Colors.Black),
-			FromColor("Dark Gray", System.Windows.Media.Colors.DarkGray),
-			FromColor("Gray", System.Windows.Media.Colors.Gray),
-			FromColor("Light Gray", System.Windows.Media.Colors.LightGray),
-			FromColor("White", System.Windows.Media.Colors.White),
-			FromColor("Red", System.Windows.Media.Colors.Firebrick),
-			FromColor("Orange", System.Windows.Media.Colors.DarkOrange),
-			FromColor("Yellow", System.Windows.Media.Colors.Goldenrod),
-			FromColor("Green", System.Windows.Media.Colors.SeaGreen),
-			FromColor("Blue", System.Windows.Media.Colors.SteelBlue),
-			FromColor("Purple", System.Windows.Media.Colors.MediumPurple)
-		};
+			var result = new List<ColorItem>
+			{
+				FromColor("Black", System.Windows.Media.Colors.Black),
+				FromColor("Dark Gray", System.Windows.Media.Colors.DarkGray),
+				FromColor("Gray", System.Windows.Media.Colors.Gray),
+				FromColor("Light Gray", System.Windows.Media.Colors.LightGray),
+				FromColor("White", System.Windows.Media.Colors.White),
+				FromColor("Red", System.Windows.Media.Colors.Firebrick),
+				FromColor("Orange", System.Windows.Media.Colors.DarkOrange),
+				FromColor("Yellow", System.Windows.Media.Colors.Goldenrod),
+				FromColor("Green", System.Windows.Media.Colors.SeaGreen),
+				FromColor("Blue", System.Windows.Media.Colors.SteelBlue),
+				FromColor("Purple", System.Windows.Media.Colors.MediumPurple)
+			};
+
+			foreach (var noteColor in Enum.GetValues<NoteColors.NoteColor>())
+			{
+				if (!NoteColors.Hex.TryGetValue(noteColor, out var baseHex))
+					continue;
+
+				var textColor = ColorSchemeConverter.GetColor(noteColor.ToString(), baseHex, ColorComponent.Text);
+				result.Add(FromColor($"Default 3M {SplitName(noteColor.ToString())} text", textColor));
+			}
+
+			return result.ToArray();
+		}
+
+		private static string SplitName(string value)
+		{
+			if (string.IsNullOrWhiteSpace(value))
+				return "Yellow";
+
+			var chars = new List<char>(value.Length + 6);
+			for (int i = 0; i < value.Length; i++)
+			{
+				var ch = value[i];
+				if (i > 0 && char.IsUpper(ch) && char.IsLetter(value[i - 1]))
+					chars.Add(' ');
+				chars.Add(ch);
+			}
+
+			return new string(chars.ToArray());
+		}
 	}
 }

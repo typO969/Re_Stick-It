@@ -12,6 +12,18 @@ namespace StickIt.Sticky
 		{
 			if (p == null) return null;
 
+			if (IsDesktopClass(p.ClassName))
+			{
+				if (p.TargetAnchorX.HasValue && p.TargetAnchorY.HasValue)
+				{
+             return StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTargetAtPoint(
+						(int)Math.Round(p.TargetAnchorX.Value),
+						(int)Math.Round(p.TargetAnchorY.Value));
+				}
+
+            return StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTarget();
+			}
+
 			var candidates = WindowEnumerationService.GetTopLevelWindows();
 
 			// 1) Hard match: same PID (best if process still running)
@@ -50,6 +62,28 @@ namespace StickIt.Sticky
 			return null;
 		}
 
+		private static bool IsDesktopClass(string? className)
+			=> string.Equals(className, "Progman", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "WorkerW", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "#32769", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "Desktop", StringComparison.OrdinalIgnoreCase);
+
+		private static bool CandidateContainsAnchor(StickyTargetInfo c, StickyTargetPersist p)
+		{
+			if (!p.TargetAnchorX.HasValue || !p.TargetAnchorY.HasValue)
+				return true;
+
+			if (c.Hwnd == IntPtr.Zero)
+				return false;
+
+       if (!StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(c.Hwnd, out var rect))
+				return false;
+
+			var ax = p.TargetAnchorX.Value;
+			var ay = p.TargetAnchorY.Value;
+			return ax >= rect.X && ax <= rect.X + rect.Width && ay >= rect.Y && ay <= rect.Y + rect.Height;
+		}
+
 		private static int Score(StickyTargetInfo c, StickyTargetPersist p)
 		{
 			int score = 0;
@@ -74,6 +108,9 @@ namespace StickIt.Sticky
 							p.WindowTitle.IndexOf(c.WindowTitle, StringComparison.OrdinalIgnoreCase) >= 0)
 					score += 1;
 			}
+
+			if (CandidateContainsAnchor(c, p))
+				score += 4;
 
 			return score;
 		}

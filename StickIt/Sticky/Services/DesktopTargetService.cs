@@ -7,6 +7,24 @@ namespace StickIt.Sticky.Services
 {
 	public static class DesktopTargetService
 	{
+    public static StickyTargetInfo? TryGetDesktopTargetAtPoint(int screenX, int screenY)
+		{
+			var pt = new POINT { X = screenX, Y = screenY };
+			var hwnd = WindowFromPoint(pt);
+			if (hwnd != IntPtr.Zero)
+			{
+				var root = GetAncestor(hwnd, GA_ROOT);
+				if (root != IntPtr.Zero)
+					hwnd = root;
+
+				var cls = GetClassNameSafe(hwnd);
+				if (IsDesktopClass(cls) && IsGood(hwnd))
+					return Build(hwnd);
+			}
+
+			return TryGetDesktopTarget();
+		}
+
 		// Best-effort “desktop” target: Shell window / Progman / WorkerW
 		public static StickyTargetInfo? TryGetDesktopTarget()
 		{
@@ -26,6 +44,12 @@ namespace StickIt.Sticky.Services
 		}
 
 		private static bool IsGood(IntPtr hwnd) => hwnd != IntPtr.Zero && IsWindow(hwnd);
+
+		private static bool IsDesktopClass(string className)
+			=> string.Equals(className, "Progman", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "WorkerW", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "#32769", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "Desktop", StringComparison.OrdinalIgnoreCase);
 
 		private static StickyTargetInfo Build(IntPtr hwnd)
 		{
@@ -49,6 +73,17 @@ namespace StickIt.Sticky.Services
 
 		[DllImport("user32.dll")]
 		private static extern IntPtr GetShellWindow();
+
+		[StructLayout(LayoutKind.Sequential)]
+		private struct POINT { public int X; public int Y; }
+
+		[DllImport("user32.dll")]
+		private static extern IntPtr WindowFromPoint(POINT pt);
+
+		[DllImport("user32.dll")]
+		private static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+
+		private const uint GA_ROOT = 2;
 
 		[DllImport("user32.dll", CharSet = CharSet.Unicode)]
 		private static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);

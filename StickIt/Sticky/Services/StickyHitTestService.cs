@@ -45,7 +45,7 @@ namespace StickIt.Sticky.Services
 				}
 
 				var cls = GetClassNameSafe(hwnd);
-				if (IsDesktopHost(cls))
+          if (IsDesktopHost(cls) || IsIgnoredHost(cls))
 					return null;
 
 				var title = GetWindowTextSafe(hwnd);
@@ -70,6 +70,11 @@ namespace StickIt.Sticky.Services
 		private static bool IsDesktopHost(string className)
 			=> string.Equals(className, "Progman", StringComparison.Ordinal)
 			   || string.Equals(className, "WorkerW", StringComparison.Ordinal);
+
+		private static bool IsIgnoredHost(string className)
+			=> string.Equals(className, "Shell_TrayWnd", StringComparison.Ordinal)
+				|| string.Equals(className, "Shell_SecondaryTrayWnd", StringComparison.Ordinal)
+				|| string.Equals(className, "NotifyIconOverflowWindow", StringComparison.Ordinal);
 
 
 		// ---- Win32 ----
