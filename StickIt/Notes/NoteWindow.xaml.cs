@@ -1784,16 +1784,19 @@ namespace StickIt
          var noteWidthPx = (int)Math.Round(Math.Max(1, Width * Math.Max(0.01, dpi.DpiScaleX)));
          var noteHeightPx = (int)Math.Round(Math.Max(1, Height * Math.Max(0.01, dpi.DpiScaleY)));
 
-         // Keep some overlap with target so note cannot drift/stick outside the host bounds.
-         int overlapMinX = (int)Math.Round(tr.X) - noteWidthPx + 1;
-         int overlapMaxX = (int)Math.Round(tr.X) + (int)Math.Max(1, Math.Round(tr.Width)) - 1;
-         int overlapMinY = (int)Math.Round(tr.Y) - noteHeightPx + 1;
-         int overlapMaxY = (int)Math.Round(tr.Y) + (int)Math.Max(1, Math.Round(tr.Height)) - 1;
+         if (!IsDesktopLikeTarget(_stickyTarget))
+         {
+            // Keep some overlap with target so note cannot drift/stick outside the host bounds.
+            int overlapMinX = (int)Math.Round(tr.X) - noteWidthPx + 1;
+            int overlapMaxX = (int)Math.Round(tr.X) + (int)Math.Max(1, Math.Round(tr.Width)) - 1;
+            int overlapMinY = (int)Math.Round(tr.Y) - noteHeightPx + 1;
+            int overlapMaxY = (int)Math.Round(tr.Y) + (int)Math.Max(1, Math.Round(tr.Height)) - 1;
 
-         if (newX < overlapMinX) newX = overlapMinX;
-         if (newX > overlapMaxX) newX = overlapMaxX;
-         if (newY < overlapMinY) newY = overlapMinY;
-         if (newY > overlapMaxY) newY = overlapMaxY;
+            if (newX < overlapMinX) newX = overlapMinX;
+            if (newX > overlapMaxX) newX = overlapMaxX;
+            if (newY < overlapMinY) newY = overlapMinY;
+            if (newY > overlapMaxY) newY = overlapMaxY;
+         }
 
          // Clamp to virtual desktop in physical pixels so it can’t disappear
          var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
@@ -2337,6 +2340,12 @@ namespace StickIt
          if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
             return;
 
+         if (IsDesktopLikeTarget(_stickyTarget))
+         {
+            ClampMode2LiftToVirtualDesktop();
+            return;
+         }
+
          if (!WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
             return;
 
@@ -2353,6 +2362,22 @@ namespace StickIt
          var minTop = hostTop - Height + 1;
          var maxLeft = hostLeft + Math.Max(1, hostWidth) - 1;
          var maxTop = hostTop + Math.Max(1, hostHeight) - 1;
+
+         Left = Math.Max(minLeft, Math.Min(maxLeft, Left));
+         Top = Math.Max(minTop, Math.Min(maxTop, Top));
+      }
+
+      private void ClampMode2LiftToVirtualDesktop()
+      {
+         var dpi = VisualTreeHelper.GetDpi(this);
+         var sx = Math.Max(0.01, dpi.DpiScaleX);
+         var sy = Math.Max(0.01, dpi.DpiScaleY);
+         var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
+
+         var minLeft = vs.Left / sx;
+         var minTop = vs.Top / sy;
+         var maxLeft = (vs.Right / sx) - Width;
+         var maxTop = (vs.Bottom / sy) - Height;
 
          Left = Math.Max(minLeft, Math.Min(maxLeft, Left));
          Top = Math.Max(minTop, Math.Min(maxTop, Top));
