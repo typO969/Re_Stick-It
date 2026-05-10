@@ -62,7 +62,7 @@ namespace StickIt
 		{
        CaptureSandboxEditors();
 			var updated = _viewModel.ToPreferences();
-			AppInstance.ApplyPreferences(updated, persist: true);
+       AppInstance.ApplyPreferences(updated, persist: true);
 		}
 
 		private void InitializeSandboxEditors()
@@ -292,6 +292,7 @@ namespace StickIt
       public bool TitleFontBold { get => _titleFontBold; set => SetField(ref _titleFontBold, value); }
 		public System.Windows.Media.FontFamily BodyFontFamily { get => _bodyFontFamily; set => SetField(ref _bodyFontFamily, value); }
 		public double BodyFontSize { get => _bodyFontSize; set => SetField(ref _bodyFontSize, value); }
+      public double BodyLineHeightMultiplier { get => _bodyLineHeightMultiplier; set => SetField(ref _bodyLineHeightMultiplier, value); }
 		public bool ShowDateAlongTitle { get => _showDateAlongTitle; set => SetField(ref _showDateAlongTitle, value); }
 		public bool EnableDropShadow { get => _enableDropShadow; set => SetField(ref _enableDropShadow, value); }
 		public bool EnableNoteBorders { get => _enableNoteBorders; set => SetField(ref _enableNoteBorders, value); }
@@ -356,6 +357,7 @@ namespace StickIt
     private bool _titleFontBold = true;
 		private System.Windows.Media.FontFamily _bodyFontFamily = new("Segoe UI");
 		private double _bodyFontSize = 14.0;
+    private double _bodyLineHeightMultiplier = 1.0;
 		private bool _showDateAlongTitle;
 		private bool _enableDropShadow = true;
       private bool _enableNoteBorders = true;
@@ -441,6 +443,7 @@ namespace StickIt
             TitleFontBold = prefs.TitleFontBold,
             BodyFontFamily = ResolveFontFamily(prefs.BodyFontFamily, "Segoe UI"),
 				BodyFontSize = prefs.BodyFontSize > 0 ? prefs.BodyFontSize : 14.0,
+           BodyLineHeightMultiplier = prefs.BodyLineHeightMultiplier > 0 ? prefs.BodyLineHeightMultiplier : 1.0,
 				ShowDateAlongTitle = prefs.ShowDateAlongTitle,
 				EnableDropShadow = prefs.EnableDropShadow,
            EnableNoteBorders = prefs.EnableNoteBorders,
@@ -495,6 +498,7 @@ namespace StickIt
             TitleFontBold = TitleFontBold,
             BodyFontFamily = string.IsNullOrWhiteSpace(BodyFontFamily?.Source) ? "Segoe UI" : BodyFontFamily.Source,
 				BodyFontSize = BodyFontSize > 0 ? BodyFontSize : 14.0,
+           BodyLineHeightMultiplier = BodyLineHeightMultiplier > 0 ? BodyLineHeightMultiplier : 1.0,
 				ShowDateAlongTitle = ShowDateAlongTitle,
 				EnableDropShadow = EnableDropShadow,
            EnableNoteBorders = EnableNoteBorders,

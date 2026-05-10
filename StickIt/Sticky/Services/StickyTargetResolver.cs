@@ -79,13 +79,17 @@ namespace StickIt.Sticky
        if (!StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(c.Hwnd, out var rect))
 				return false;
 
-			var ax = p.TargetAnchorX.Value;
+        var ax = p.TargetAnchorX.Value;
 			var ay = p.TargetAnchorY.Value;
 			return ax >= rect.X && ax <= rect.X + rect.Width && ay >= rect.Y && ay <= rect.Y + rect.Height;
 		}
 
+
 		private static int Score(StickyTargetInfo c, StickyTargetPersist p)
 		{
+       if (!StickIt.Services.VirtualDesktopManagerService.IsWindowOnCurrentVirtualDesktop(c.Hwnd))
+				return 0;
+
 			int score = 0;
 
 			if (p.ProcessId > 0 && c.ProcessId == p.ProcessId) score += 3;

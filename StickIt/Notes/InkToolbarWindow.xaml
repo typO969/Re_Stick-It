@@ -2,11 +2,11 @@
    x:Class="StickIt.InkToolbarWindow"
    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-   SizeToContent="WidthAndHeight"
    AllowsTransparency="True"
    Background="Transparent"
    ResizeMode="NoResize"
    ShowInTaskbar="False"
+   SizeToContent="WidthAndHeight"
    Topmost="False"
    WindowStyle="None">
    <Border
@@ -15,79 +15,99 @@
       BorderThickness="1"
       CornerRadius="6"
       MouseLeftButtonDown="Root_MouseLeftButtonDown">
-      <Grid Margin="4">
+      <Grid Width="175" ScrollViewer.VerticalScrollBarVisibility="Disabled">
          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
          </Grid.RowDefinitions>
 
-         <StackPanel Orientation="Horizontal">
+         <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
             <Button
                x:Name="btnPen"
                MinWidth="44"
                Margin="0,0,4,0"
+               Padding="6,2"
                Click="Pen_Click"
-               Content="Pen"
-               Padding="6,2" />
+               Content="Pen" />
             <Button
                x:Name="btnErase"
                MinWidth="52"
                Margin="0,0,4,0"
+               Padding="6,2"
                Click="Erase_Click"
-               Content="Erase"
-               Padding="6,2" />
+               Content="Erase" />
             <Button
                MinWidth="50"
                Margin="0,0,4,0"
+               Padding="6,2"
                Click="Clear_Click"
-               Content="Clear"
-               Padding="6,2" />
-            <Button
-               MinWidth="48"
-               Margin="0,0,4,0"
-               Click="Done_Click"
-               Content="Done"
-               Padding="6,2" />
+               Content="Clear" />
+         </StackPanel>
+
+         <StackPanel
+            Grid.Row="1"
+            Margin="0,3,0,1"
+            HorizontalAlignment="Center"
+            Orientation="Horizontal">
             <Button
                MinWidth="74"
+               Padding="6,2"
                Click="Color_Click"
-               Content="Color..."
-               Padding="6,2" />
+               Content="Color..." />
             <Border
                x:Name="ColorSwatch"
                Width="16"
                Height="16"
-               Margin="6,0,0,0"
+               Margin="3,0,0,0"
                VerticalAlignment="Center"
                Background="Black"
                BorderBrush="#66000000"
                BorderThickness="1"
                CornerRadius="2" />
+            <Button
+               MinWidth="30"
+               Margin="25,0,0,0"
+               Padding="0,0,0,0"
+               HorizontalAlignment="Center"
+               Click="Done_Click"
+               Content="&#xE8BB;"
+               FontFamily="Segoe MDL2 Assets"
+               FontSize="14"
+               FontWeight="Bold"
+               Foreground="#FF9E0606" />
          </StackPanel>
 
-         <Grid Grid.Row="1" Margin="0,6,0,0">
+         <Grid
+            Grid.Row="2"
+            Margin="0,6,0,0"
+            HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
                <ColumnDefinition Width="Auto" />
-               <ColumnDefinition Width="150" />
+               <ColumnDefinition Width="Auto" />
                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock VerticalAlignment="Center" Text="Thickness:" />
+            <TextBlock
+               HorizontalAlignment="Left"
+               VerticalAlignment="Center"
+               Text="Thickness:" />
             <Slider
                x:Name="sldThickness"
                Grid.Column="1"
-               Margin="8,0,8,0"
+               Width="60"
+               IsSnapToTickEnabled="True"
                Maximum="10"
                Minimum="1"
                SmallChange="1"
                TickFrequency="1"
-               Value="1"
                ValueChanged="sldThickness_ValueChanged"
-               IsSnapToTickEnabled="True" />
+               Value="1" />
             <TextBox
                x:Name="txtThickness"
                Grid.Column="2"
-               Width="38"
+               Width="30"
+               HorizontalAlignment="Left"
                HorizontalContentAlignment="Center"
                LostFocus="txtThickness_LostFocus"
                Text="1" />

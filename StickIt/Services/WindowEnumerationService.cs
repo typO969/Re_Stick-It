@@ -27,6 +27,9 @@ namespace StickIt.Services
 				var exStyle = (long) GetWindowLongPtr(hwnd, GWL_EXSTYLE);
 				if ((exStyle & WS_EX_TOOLWINDOW) == WS_EX_TOOLWINDOW) return true;
 
+				if (!VirtualDesktopManagerService.IsWindowOnCurrentVirtualDesktop(hwnd))
+					return true;
+
 				// Exclude our own process windows
 				GetWindowThreadProcessId(hwnd, out var pid);
 				if (pid == Process.GetCurrentProcess().Id) return true;
@@ -35,7 +38,9 @@ namespace StickIt.Services
 				var title = GetWindowTextSafe(hwnd);
 				if (string.IsNullOrWhiteSpace(title)) return true;
 
-				var cls = GetClassNameSafe(hwnd);
+            var cls = GetClassNameSafe(hwnd);
+				if (IsIgnoredClass(cls))
+					return true;
 
 				// Process name (best-effort)
 				string? procName = null;
@@ -56,6 +61,18 @@ namespace StickIt.Services
 
 			return list;
 		}
+
+     private static bool IsIgnoredClass(string className)
+			=> string.Equals(className, "Windows.UI.Core.CoreWindow", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "ApplicationFrameWindow", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "ApplicationFrameHost", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "TextInputHost", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "Windows.UI.Input.InputSite.WindowClass", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "Windows.UI.Composition.DesktopWindowContentBridge", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "XamlExplorerHostIslandWindow", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "ImmersiveLauncher", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "ShellExperienceHost", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(className, "Start", StringComparison.OrdinalIgnoreCase);
 
 		// --------- Win32 ---------
 

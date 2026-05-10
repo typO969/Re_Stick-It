@@ -27,6 +27,7 @@ namespace StickIt.Persistence
 
 			m.FontFamily = p.FontFamily;
 			m.FontSize = p.FontSize;
+			m.Props.LineHeightMultiplier = p.LineHeightMultiplier > 0 ? p.LineHeightMultiplier : m.Props.LineHeightMultiplier;
 
 			return m;
 		}
@@ -57,6 +58,7 @@ namespace StickIt.Persistence
 
 				FontFamily = w.GetFontFamily(),
 				FontSize = w.GetFontSize(),
+				LineHeightMultiplier = w.GetLineHeightMultiplier(),
 
 				StickyTargetPersist = w.GetStickyTargetPersist(),
 

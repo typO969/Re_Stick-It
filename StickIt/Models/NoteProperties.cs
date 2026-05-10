@@ -24,6 +24,7 @@ namespace StickIt.Models
 		public string Title { get; set; } = "Untitled";
 		public string FontFamily { get; set; } = "Segoe UI";
 		public double FontSize { get; set; } = 14.0;
+      public double LineHeightMultiplier { get; set; } = 1.0;
 		public NoteColors.NoteColor ColorKey { get; set; } = NoteColors.NoteColor.ThreeMYellow;
 		public FontWeight FontWeight { get; set; }
 		public System.Windows.FontStyle FontStyle { get; set; }

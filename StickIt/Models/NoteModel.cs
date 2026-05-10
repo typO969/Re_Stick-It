@@ -43,6 +43,17 @@ namespace StickIt.Models
 			set { if (Math.Abs(Props.FontSize - value) < 0.001) return; Props.FontSize = value; OnPropertyChanged(); }
 		}
 
+    public double LineHeightMultiplier
+    {
+        get => Props.LineHeightMultiplier;
+        set
+        {
+            if (Math.Abs(Props.LineHeightMultiplier - value) < 0.001) return;
+            Props.LineHeightMultiplier = value;
+            OnPropertyChanged();
+        }
+    }
+
     public System.Windows.Media.Brush PaperBrush
     {
         get

@@ -740,9 +740,20 @@ namespace StickIt
 				JsonStore.Save(_state);
 		}
 
+		public void ApplyLeadingPreferenceToNotes(double multiplier)
+		{
+			var normalized = Math.Max(0.8, Math.Min(2.5, multiplier));
+			foreach (var w in _windows.Where(w => w.IsLoaded))
+			{
+				w.ApplyLeadingPreference(normalized);
+			}
+
+			QueueSave(400);
+		}
+
 		private void ApplyPreferencesToWindows()
 		{
-			foreach (var w in _windows.Where(w => w.IsLoaded))
+       foreach (var w in _windows.ToArray().Where(w => w.IsLoaded))
 			{
 				w.ShowInTaskbar = Preferences.ShowTaskbarIcon;
 				w.ApplyPreferences(Preferences);
@@ -1198,6 +1209,7 @@ namespace StickIt
 				TitleFontBold = source.TitleFontBold,
 				BodyFontFamily = source.BodyFontFamily,
 				BodyFontSize = source.BodyFontSize,
+          BodyLineHeightMultiplier = source.BodyLineHeightMultiplier,
 				ShowDateAlongTitle = source.ShowDateAlongTitle,
 				EnableDropShadow = source.EnableDropShadow,
           EnableNoteBorders = source.EnableNoteBorders,

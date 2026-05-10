@@ -50,6 +50,7 @@ namespace StickIt
 		public System.Windows.Media.Color Color { get; set; } = System.Windows.Media.Colors.Black;
 		public bool ApplyToSelection { get; set; } = true;
 		public bool ApplyToEntireNote { get; set; }
+     public double LineHeightMultiplier { get; set; } = 1.0;
      public bool SetAsDefaultForNewNotes { get; set; }
 		public bool ApplyToAllOpenNotes { get; set; }
 	}
@@ -69,6 +70,7 @@ namespace StickIt
 		public bool IsItalic { get => _isItalic; set => SetField(ref _isItalic, value); }
 		public bool IsUnderline { get => _isUnderline; set => SetField(ref _isUnderline, value); }
 		public ColorItem SelectedColor { get => _selectedColor; set => SetField(ref _selectedColor, value); }
+		public double LineHeightMultiplier { get => _lineHeightMultiplier; set => SetField(ref _lineHeightMultiplier, value); }
 
 		public bool ApplyToSelection
 		{
@@ -137,6 +139,7 @@ namespace StickIt
 		private bool _isItalic;
 		private bool _isUnderline;
 		private ColorItem _selectedColor = ColorItem.FromColor("Black", System.Windows.Media.Colors.Black);
+    private double _lineHeightMultiplier = 1.0;
 		private bool _applyToSelection = true;
 		private bool _applyToEntireNote;
 		private bool _setAsDefaultForNewNotes;
@@ -164,6 +167,7 @@ namespace StickIt
 			vm.IsBold = settings.IsBold;
 			vm.IsItalic = settings.IsItalic;
 			vm.IsUnderline = settings.IsUnderline;
+       vm.LineHeightMultiplier = settings.LineHeightMultiplier > 0 ? settings.LineHeightMultiplier : 1.0;
 			vm.ApplyToSelection = settings.ApplyToSelection;
 			vm.ApplyToEntireNote = settings.ApplyToEntireNote;
 			vm.SetAsDefaultForNewNotes = settings.SetAsDefaultForNewNotes;
@@ -183,6 +187,7 @@ namespace StickIt
 				IsItalic = IsItalic,
 				IsUnderline = IsUnderline,
 				Color = SelectedColor.Color,
+            LineHeightMultiplier = LineHeightMultiplier,
 				ApplyToSelection = ApplyToSelection,
            ApplyToEntireNote = ApplyToEntireNote,
 				SetAsDefaultForNewNotes = SetAsDefaultForNewNotes,

@@ -49,6 +49,7 @@ namespace StickIt.Persistence
     public bool TitleFontBold { get; set; } = true;
 		public string BodyFontFamily { get; set; } = "Segoe UI";
 		public double BodyFontSize { get; set; } = 14.0;
+      public double BodyLineHeightMultiplier { get; set; } = 1.0;
 		public bool ShowDateAlongTitle { get; set; }
 		public bool EnableDropShadow { get; set; } = true;
      public bool EnableNoteBorders { get; set; } = true;

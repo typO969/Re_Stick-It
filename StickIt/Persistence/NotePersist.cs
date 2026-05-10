@@ -29,6 +29,7 @@ namespace StickIt.Persistence
 
 		public string FontFamily { get; set; } = "Segoe UI";
 		public double FontSize { get; set; } = 14.0;
+     public double LineHeightMultiplier { get; set; } = 1.0;
 
 		public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 		public DateTime ModifiedUtc { get; set; } = DateTime.UtcNow;

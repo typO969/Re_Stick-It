@@ -56,6 +56,9 @@ namespace StickIt
       private static double NormalizeFontSize(double size, double fallback = 14.0)
          => size > 0 ? size : fallback;
 
+      private static double NormalizeLineHeightMultiplier(double value, double fallback = 1.0)
+         => value > 0 ? Math.Max(0.8, Math.Min(2.5, value)) : fallback;
+
       private static System.Windows.Media.FontFamily CreateSafeFontFamily(string? familyName, string fallback = "Segoe UI")
       {
          var preferred = string.IsNullOrWhiteSpace(familyName) ? fallback : familyName;
@@ -100,6 +103,8 @@ namespace StickIt
       private double _inkThicknessLevel = 1.0;
       private System.Windows.Media.Color _inkColor = System.Windows.Media.Colors.Black;
       private bool _inkColorIsCustom;
+      private System.Windows.Media.Brush _caretBrush = System.Windows.Media.Brushes.Black;
+      private double _lineHeightMultiplier = 1.0;
       private InkToolbarWindow? _inkToolbarWindow;
       private bool _inkToolbarSnapEnabled = true;
       private bool _suppressToolbarMoveHandling;
@@ -351,6 +356,18 @@ namespace StickIt
       }
       public string GetFontFamily() => _note?.FontFamily ?? "Helvetica";
       public double GetFontSize() => _note?.FontSize ?? 14.0;
+      public double GetLineHeightMultiplier() => _note?.LineHeightMultiplier ?? _lineHeightMultiplier;
+      public System.Windows.Media.Brush CaretBrush
+      {
+         get => _caretBrush;
+         private set
+         {
+            if (Equals(_caretBrush, value))
+               return;
+            _caretBrush = value;
+            OnPropertyChanged();
+         }
+      }
 
       public void SetTitle(string title)
       {
@@ -525,7 +542,10 @@ namespace StickIt
 
          _note = note;
          DataContext = _note;
+         _lineHeightMultiplier = _note?.LineHeightMultiplier ?? _lineHeightMultiplier;
          ConfigureInkLayer();
+         UpdateCaretBrush();
+         UpdateLineSpacing();
 
          // Keep autosave behavior consistent regardless of constructor use
         txtNoteContent.TextChanged += TxtNoteContent_TextChanged;
@@ -735,6 +755,9 @@ namespace StickIt
             _note.FontFamily = fontFamily.Source;
             _note.FontSize = normalizedSize;
          }
+
+         UpdateLineSpacing();
+         UpdateCaretBrush();
 
          NoteTextChanged?.Invoke(this, EventArgs.Empty);
       }
@@ -1069,6 +1092,8 @@ namespace StickIt
 
          miUnderline.IsChecked = HasDecoration(deco, TextDecorationLocation.Underline);
 
+         UpdateCaretBrush();
+
          // if you have a Strikethrough menu item:
          // miStrike.IsChecked = HasDecoration(deco, TextDecorationLocation.Strikethrough);
       }
@@ -1172,6 +1197,9 @@ namespace StickIt
          _note!.FontFamily = fontFamily.Source;
          _note!.FontSize = sizeDip;
 
+         UpdateLineSpacing();
+         UpdateCaretBrush();
+
          NoteTextChanged?.Invoke(this, EventArgs.Empty);
       }
 
@@ -1199,6 +1227,8 @@ namespace StickIt
          range.ApplyPropertyValue(TextElement.FontSizeProperty, sizePt);
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
          ApplyDefaultInkAttributes();
+         UpdateLineSpacing();
+         UpdateCaretBrush();
 
       }
 
@@ -1325,6 +1355,7 @@ namespace StickIt
             if (_note != null)
                _note.ColorKey = key;
           ApplyDefaultInkAttributes();
+            UpdateCaretBrush();
             AppInstance.QueueSaveFromWindow(); // we’ll add this tiny helper in App
          }
       }
@@ -1407,6 +1438,32 @@ namespace StickIt
 
          if (miImportNote != null)
             miImportNote.IsEnabled = _externalNoteImportExportEnabled;
+
+         if (LeadingSlider != null)
+            LeadingSlider.Value = _lineHeightMultiplier;
+
+      }
+
+      private void FontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+      {
+         if (txtNoteContent == null)
+            return;
+
+         var size = NormalizeFontSize(e.NewValue, _note?.FontSize ?? 14.0);
+         if (_note != null)
+            _note.FontSize = size;
+
+         ApplyFontToSelectionWpf(_note?.FontFamily ?? "Segoe UI", size, GetSelectionBold(), GetSelectionItalic());
+         UpdateLineSpacing();
+      }
+
+      private void LeadingSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+      {
+         if (_note == null)
+            return;
+
+         _note.LineHeightMultiplier = NormalizeLineHeightMultiplier(e.NewValue);
+         UpdateLineSpacing();
       }
 
       public void ExportNoteFromManager()
@@ -1459,10 +1516,10 @@ namespace StickIt
          var dlg = new Microsoft.Win32.SaveFileDialog
          {
             Title = "Export note",
-            Filter = "StickIt note (*.3n)|*.3n|JSON file (*.json)|*.json|All files (*.*)|*.*",
-            DefaultExt = ".3n",
+            Filter = "StickIt note (*.3m)|*.3m|JSON file (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = ".3m",
             AddExtension = true,
-            FileName = $"{GetTitle().Trim().Replace(' ', '_')}.3n"
+            FileName = $"{GetTitle().Trim().Replace(' ', '_')}.3m"
          };
 
          if (dlg.ShowDialog(this) != true)
@@ -1491,7 +1548,7 @@ namespace StickIt
          var dlg = new Microsoft.Win32.OpenFileDialog
          {
             Title = "Load external note",
-            Filter = "StickIt note (*.3n;*.json)|*.3n;*.json|All files (*.*)|*.*",
+            Filter = "StickIt note (*.3m;*.json)|*.3m;*.json|All files (*.*)|*.*",
             CheckFileExists = true
          };
 
@@ -1616,6 +1673,7 @@ namespace StickIt
             IsItalic = italic,
             IsUnderline = underline,
             Color = color,
+            LineHeightMultiplier = _note?.LineHeightMultiplier ?? _lineHeightMultiplier,
             ApplyToSelection = true
          };
       }
@@ -1662,6 +1720,12 @@ namespace StickIt
          range.ApplyPropertyValue(TextElement.FontStyleProperty, settings.IsItalic ? FontStyles.Italic : FontStyles.Normal);
          range.ApplyPropertyValue(Inline.TextDecorationsProperty, settings.IsUnderline ? TextDecorations.Underline : null);
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(settings.Color));
+
+         if (_note != null)
+            _note.LineHeightMultiplier = NormalizeLineHeightMultiplier(settings.LineHeightMultiplier);
+
+         UpdateLineSpacing();
+         UpdateCaretBrush();
 
          NoteTextChanged?.Invoke(this, EventArgs.Empty);
       }
@@ -2066,11 +2130,11 @@ namespace StickIt
       private void Sticky_Pick_Click(object sender, RoutedEventArgs e)
       {
          var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
-         if (dlg.ShowDialog() == true && dlg.SelectedTarget != null)
-         {
-            if (EnterStuckMode2WithTarget(dlg.SelectedTarget, allowDesktopFallback: true))
-               return;
-         }
+         if (dlg.ShowDialog() != true || dlg.SelectedTarget == null)
+            return;
+
+         if (EnterStuckMode2WithTarget(dlg.SelectedTarget, allowDesktopFallback: true))
+            return;
 
          TryEnterMode2DesktopFallback();
       }
@@ -2131,6 +2195,17 @@ namespace StickIt
          UpdateStickyVisuals();
       }
 
+      public void ApplyLeadingPreference(double multiplier)
+      {
+         _lineHeightMultiplier = NormalizeLineHeightMultiplier(multiplier);
+
+         if (_note != null)
+            _note.LineHeightMultiplier = _lineHeightMultiplier;
+
+         UpdateLineSpacing();
+         txtNoteContent?.UpdateLayout();
+      }
+
       private System.Windows.Media.Color GetDefaultTextColor()
       {
          if (_note == null)
@@ -2150,6 +2225,7 @@ namespace StickIt
 
          var range = new TextRange(start, start);
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
+         UpdateCaretBrush();
       }
 
       private void ApplyDefaultInkAttributes()
@@ -2159,6 +2235,7 @@ namespace StickIt
 
          _inkColor = GetDefaultTextColor();
          ApplyInkDrawingAttributes();
+         UpdateCaretBrush();
       }
 
       private void ApplyInkDrawingAttributes()
@@ -2624,6 +2701,7 @@ namespace StickIt
             _consecutiveEmptyListEnterCount = 0;
          }
 
+         var caretLineHeight = GetLineHeightDip(_note?.FontSize ?? txtNoteContent.FontSize);
          _suppressAutoListHandling = true;
          try
          {
@@ -2639,6 +2717,7 @@ namespace StickIt
                : $"{nextPrefix}{carriedText}";
 
             SetParagraphText(next, nextText, isNumbered);
+            next.LineHeight = caretLineHeight;
 
             var caret = GetCaretAfterPrefix(next, nextPrefix.Length)
                ?? next.ContentEnd.GetInsertionPosition(LogicalDirection.Backward)
@@ -2725,6 +2804,7 @@ namespace StickIt
       {
          var previousText = GetParagraphText(previous);
          var currentText = GetParagraphText(current);
+         var caretInCurrent = txtNoteContent?.CaretPosition?.Paragraph == current;
 
          if (TryParseFormattedBulletLine(previousText, out var existingPrevIndent, out _)
             && TryParseFormattedBulletLine(currentText, out var existingCurrIndent, out _)
@@ -2747,6 +2827,13 @@ namespace StickIt
          SetParagraphText(previous, p1, isNumbered: false);
          SetParagraphText(current, p2, isNumbered: false);
          _lastAutoBulletPair = new AutoBulletPairState { First = previous, Second = current, Marker = prevMarker };
+         if (caretInCurrent && txtNoteContent != null)
+         {
+            var caret = current.ContentEnd.GetInsertionPosition(LogicalDirection.Backward)
+               ?? current.ContentEnd;
+            txtNoteContent.Selection.Select(caret, caret);
+            new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+         }
          if (_todoTitleArmed)
          {
             _todoTemplateApplied = true;
@@ -2759,6 +2846,7 @@ namespace StickIt
       {
          var prevText = GetParagraphText(previous);
          var currText = GetParagraphText(current);
+         var caretInCurrent = txtNoteContent?.CaretPosition?.Paragraph == current;
 
          if (TryParseFormattedNumberLine(prevText, out var existingPrevIndent, out var existingPrevNumber, out _)
             && TryParseFormattedNumberLine(currText, out var existingCurrIndent, out var existingCurrNumber, out _)
@@ -2773,6 +2861,13 @@ namespace StickIt
             var spacingHash = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
             SetParagraphText(previous, $"{prevHashIndent}1{_autoListNumberSuffix}{spacingHash}{prevHashContent}", isNumbered: true);
             SetParagraphText(current, $"{currHashIndent}2{_autoListNumberSuffix}{spacingHash}{currHashContent}", isNumbered: true);
+            if (caretInCurrent && txtNoteContent != null)
+            {
+               var caret = current.ContentEnd.GetInsertionPosition(LogicalDirection.Backward)
+                  ?? current.ContentEnd;
+               txtNoteContent.Selection.Select(caret, caret);
+               new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+            }
             if (_todoTitleArmed)
             {
                _todoTemplateApplied = true;
@@ -2793,6 +2888,13 @@ namespace StickIt
          var spacing = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
          SetParagraphText(previous, $"{prevIndent}{prevNumber}{_autoListNumberSuffix}{spacing}{prevContent}", isNumbered: true);
          SetParagraphText(current, $"{currIndent}{currNumber}{_autoListNumberSuffix}{spacing}{currContent}", isNumbered: true);
+         if (caretInCurrent && txtNoteContent != null)
+         {
+            var caret = current.ContentEnd.GetInsertionPosition(LogicalDirection.Backward)
+               ?? current.ContentEnd;
+            txtNoteContent.Selection.Select(caret, caret);
+            new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+         }
          if (_todoTitleArmed)
          {
             _todoTemplateApplied = true;
@@ -2950,6 +3052,8 @@ namespace StickIt
          var style = ExtractTemplateStyle(paragraph, templateRtf);
          paragraph.Margin = style.Margin;
          paragraph.TextIndent = style.TextIndent;
+         paragraph.LineHeight = GetLineHeightDip(style.FontSize);
+         paragraph.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
 
          paragraph.Inlines.Clear();
          var run = new Run(text)
@@ -2967,6 +3071,62 @@ namespace StickIt
             run.Foreground = style.Foreground;
 
          paragraph.Inlines.Add(run);
+      }
+
+      private double GetLineHeightDip(double fontSizeDip)
+      {
+         var multiplier = NormalizeLineHeightMultiplier(_note?.LineHeightMultiplier ?? _lineHeightMultiplier);
+         return Math.Max(1.0, fontSizeDip * multiplier);
+      }
+
+      private void UpdateLineSpacing()
+      {
+         if (txtNoteContent?.Document == null)
+            return;
+
+         var fontSize = _note?.FontSize > 0 ? _note.FontSize : txtNoteContent.FontSize;
+         txtNoteContent.Document.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+
+         foreach (var paragraph in txtNoteContent.Document.Blocks.OfType<Paragraph>())
+         {
+            var run = paragraph.Inlines.OfType<Run>().FirstOrDefault();
+            var paragraphFontSize = run?.FontSize ?? paragraph.FontSize;
+            if (double.IsNaN(paragraphFontSize) || paragraphFontSize <= 0)
+               paragraphFontSize = fontSize > 0 ? fontSize : 14.0;
+
+            var lineHeight = GetLineHeightDip(paragraphFontSize);
+            paragraph.LineHeight = lineHeight;
+            paragraph.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+         }
+
+         txtNoteContent.UpdateLayout();
+      }
+
+      private void UpdateCaretBrush()
+      {
+         if (txtNoteContent == null)
+            return;
+
+         var color = GetCurrentCaretColor();
+         var brush = new SolidColorBrush(color);
+         brush.Freeze();
+         CaretBrush = brush;
+      }
+
+      private System.Windows.Media.Color GetCurrentCaretColor()
+      {
+         var selection = txtNoteContent?.Selection;
+         if (selection != null)
+         {
+            var fg = selection.GetPropertyValue(TextElement.ForegroundProperty);
+            if (fg is SolidColorBrush solid)
+               return solid.Color;
+         }
+
+         if (txtNoteContent?.Foreground is SolidColorBrush fallback)
+            return fallback.Color;
+
+         return GetDefaultTextColor();
       }
 
       private ListTemplateStyle ExtractTemplateStyle(Paragraph paragraph, string? templateRtf)
@@ -3074,6 +3234,12 @@ namespace StickIt
             txtNoteTitle.FontSize = prefs.TitleFontSize;
            txtNoteTitle.FontWeight = prefs.TitleFontBold ? FontWeights.Bold : FontWeights.Normal;
          }
+
+         if (_note != null)
+            _note.LineHeightMultiplier = NormalizeLineHeightMultiplier(prefs.BodyLineHeightMultiplier); // No-op placeholder
+
+         UpdateLineSpacing();
+         UpdateCaretBrush();
 
          UpdateStickyVisuals();
       }

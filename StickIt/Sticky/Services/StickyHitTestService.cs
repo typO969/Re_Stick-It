@@ -44,9 +44,15 @@ namespace StickIt.Sticky.Services
 					continue;
 				}
 
-				var cls = GetClassNameSafe(hwnd);
-          if (IsDesktopHost(cls) || IsIgnoredHost(cls))
+            var cls = GetClassNameSafe(hwnd);
+			 if (IsDesktopHost(cls) || IsIgnoredHost(cls))
 					return null;
+
+				if (!StickIt.Services.VirtualDesktopManagerService.IsWindowOnCurrentVirtualDesktop(hwnd))
+				{
+					hwnd = GetWindow(hwnd, GW_HWNDNEXT);
+					continue;
+				}
 
 				var title = GetWindowTextSafe(hwnd);
 
