@@ -271,17 +271,17 @@ namespace StickIt
          // Only release if THIS instance actually created and owns the mutex
          if (_singleInstanceMutex != null)
          {
-            if (_ownsMutex)
-            {
-               try
-               {
-                  _singleInstanceMutex.ReleaseMutex();
-               }
-               catch
-               {
-                  // Fallback catch just in case of thread-identity mismatch during shutdown
-               }
-            }
+            //if (_ownsMutex)
+            //{
+            //   try
+            //   {
+            //      _singleInstanceMutex.ReleaseMutex();
+            //   }
+            //   catch
+            //   {
+            //      // Fallback catch just in case of thread-identity mismatch during shutdown
+            //   }
+            //}
 
             _singleInstanceMutex.Dispose();
             _singleInstanceMutex = null;
