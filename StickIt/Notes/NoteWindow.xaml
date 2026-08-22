@@ -389,20 +389,20 @@
                   <MenuItem
                      x:Name="miSticky_NotStuck"
                      Click="Sticky_NotStuck_Click"
-                     Header="Not stuck" />
+                     Header="Not stuck - (Mode 0)" />
                   <MenuItem
                      x:Name="miSticky_AOT"
                      Click="Sticky_AOT_Click"
-                     Header="Always on top" />
+                     Header="Always on top - (Mode 1)" />
                   <Separator />
                   <MenuItem
                      x:Name="miSticky_Auto"
                      Click="Sticky_Auto_Click"
-                     Header="Stick note" />
+                     Header="Stick note - (Mode 2)" />
                   <MenuItem
                      x:Name="miSticky_Pick"
                      Click="Sticky_Pick_Click"
-                     Header="Stick note to specific window..." />
+                     Header="Stick note to specific window... - (Mode 2 alt.)" />
                   <Separator />
                   <MenuItem
                      x:Name="miSticky_SnapNow"
@@ -450,13 +450,13 @@
                               <Grid Grid.Column="1">
                                  <Slider
                                     x:Name="LeadingSlider"
-                                    Minimum="0.9"
-                                    Maximum="1.8"
-                                    TickFrequency="0.05"
-                                    IsSnapToTickEnabled="True"
                                     Width="140"
                                     MinWidth="140"
-                                     IsEnabled="True"
+                                    IsEnabled="True"
+                                    IsSnapToTickEnabled="True"
+                                    Maximum="1.8"
+                                    Minimum="0.9"
+                                    TickFrequency="0.05"
                                     ValueChanged="LeadingSlider_ValueChanged" />
                                  <Border VerticalAlignment="Bottom" IsHitTestVisible="False">
                                     <TextBlock
@@ -465,9 +465,9 @@
                                        Text="•">
                                        <TextBlock.Margin>
                                           <MultiBinding Converter="{StaticResource SliderDefaultPositionConverter}">
-                                             <Binding Source="{x:Reference LeadingSlider}" Path="ActualWidth" />
-                                             <Binding Source="{x:Reference LeadingSlider}" Path="Minimum" />
-                                             <Binding Source="{x:Reference LeadingSlider}" Path="Maximum" />
+                                             <Binding Path="ActualWidth" Source="{x:Reference LeadingSlider}" />
+                                             <Binding Path="Minimum" Source="{x:Reference LeadingSlider}" />
+                                             <Binding Path="Maximum" Source="{x:Reference LeadingSlider}" />
                                              <Binding Source="1.0" />
                                           </MultiBinding>
                                        </TextBlock.Margin>
@@ -510,8 +510,8 @@
                <Separator />
 
                <!--  Editing  -->
-                <MenuItem Click="Menu_TaskCompleted" Header="Task completed" />
-                <Separator />
+               <MenuItem Click="Menu_TaskCompleted" Header="Task completed" />
+               <Separator />
                <MenuItem Click="Menu_Cut" Header="Cut" />
                <MenuItem Click="Menu_Copy" Header="Copy" />
                <MenuItem Click="Menu_Paste" Header="Paste" />
@@ -519,19 +519,25 @@
                <Separator />
 
                <!--  Save/Load (note: you already autosave, but keep these for parity)  -->
-                <MenuItem Header="Saving/Loading">
-                   <MenuItem Click="Menu_SaveNow" Header="Save notes now" />
-                   <MenuItem Click="Menu_SyncNow" Header="Sync now" />
-                   <MenuItem Click="Menu_SyncPullNow" Header="Pull now" />
-                   <MenuItem Click="Menu_SyncPushNow" Header="Push now" />
-                   <Separator />
-                   <MenuItem x:Name="miExportNote" Click="Menu_ExportNote" Header="Export note..." />
-                   <MenuItem x:Name="miImportNote" Click="Menu_ImportNote" Header="Load note..." />
-                   <MenuItem
-                      Click="Menu_LoadNotes"
-                      Header="Load notes..."
-                      IsEnabled="False" />
-                </MenuItem>
+               <MenuItem Header="Saving/Loading">
+                  <MenuItem Click="Menu_SaveNow" Header="Save notes now" />
+                  <MenuItem Click="Menu_SyncNow" Header="Sync now" />
+                  <MenuItem Click="Menu_SyncPullNow" Header="Pull now" />
+                  <MenuItem Click="Menu_SyncPushNow" Header="Push now" />
+                  <Separator />
+                  <MenuItem
+                     x:Name="miExportNote"
+                     Click="Menu_ExportNote"
+                     Header="Export note..." />
+                  <MenuItem
+                     x:Name="miImportNote"
+                     Click="Menu_ImportNote"
+                     Header="Load note..." />
+                  <MenuItem
+                     Click="Menu_LoadNotes"
+                     Header="Load notes..."
+                     IsEnabled="False" />
+               </MenuItem>
 
                <Separator />
 
@@ -624,15 +630,15 @@
 
                                  </Border>
 
-                                <ControlTemplate.Triggers>
+                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="CloseButtonOuterBorder" Property="Opacity" Value="1" />
-                                        <Setter TargetName="CloseButtonInnerBorder" Property="Opacity" Value="0.45" />
+                                       <Setter TargetName="CloseButtonOuterBorder" Property="Opacity" Value="1" />
+                                       <Setter TargetName="CloseButtonInnerBorder" Property="Opacity" Value="0.45" />
                                     </Trigger>
                                     <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="CloseButtonOuterBorder" Property="Opacity" Value="0.70" />
+                                       <Setter TargetName="CloseButtonOuterBorder" Property="Opacity" Value="0.70" />
                                     </Trigger>
-                                </ControlTemplate.Triggers>
+                                 </ControlTemplate.Triggers>
 
                               </ControlTemplate>
                            </Button.Template>
@@ -682,15 +688,15 @@
 
                                  </Border>
 
-                                <ControlTemplate.Triggers>
+                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="PinButtonOuterBorder" Property="Opacity" Value="1" />
-                                        <Setter TargetName="PinButtonInnerBorder" Property="Opacity" Value="0.50" />
+                                       <Setter TargetName="PinButtonOuterBorder" Property="Opacity" Value="1" />
+                                       <Setter TargetName="PinButtonInnerBorder" Property="Opacity" Value="0.50" />
                                     </Trigger>
                                     <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="PinButtonOuterBorder" Property="Opacity" Value="0.70" />
+                                       <Setter TargetName="PinButtonOuterBorder" Property="Opacity" Value="0.70" />
                                     </Trigger>
-                                </ControlTemplate.Triggers>
+                                 </ControlTemplate.Triggers>
 
                               </ControlTemplate>
                            </Button.Template>
@@ -728,15 +734,15 @@
 
                                  </Border>
 
-                                <ControlTemplate.Triggers>
+                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="MinimizeButtonOuterBorder" Property="Opacity" Value="1" />
-                                        <Setter TargetName="MinimizeButtonInnerBorder" Property="Opacity" Value="0.50" />
+                                       <Setter TargetName="MinimizeButtonOuterBorder" Property="Opacity" Value="1" />
+                                       <Setter TargetName="MinimizeButtonInnerBorder" Property="Opacity" Value="0.50" />
                                     </Trigger>
                                     <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="MinimizeButtonOuterBorder" Property="Opacity" Value="0.70" />
+                                       <Setter TargetName="MinimizeButtonOuterBorder" Property="Opacity" Value="0.70" />
                                     </Trigger>
-                                </ControlTemplate.Triggers>
+                                 </ControlTemplate.Triggers>
 
                               </ControlTemplate>
                            </Button.Template>
@@ -780,8 +786,8 @@
                      Background="{Binding PaperBrush}"
                      BorderBrush="{Binding PaperBrush}"
                      BorderThickness="0"
-                     ContextMenu="{x:Null}"
                      CaretBrush="{Binding RelativeSource={RelativeSource AncestorType=Window}, Path=CaretBrush}"
+                     ContextMenu="{x:Null}"
                      FontFamily="{Binding FontFamily}"
                      FontSize="{Binding FontSize}"
                      FontWeight="Normal"
