@@ -177,9 +177,9 @@ namespace StickIt
          public System.Windows.Media.FontFamily FontFamily { get; set; } = new System.Windows.Media.FontFamily("Segoe UI");
          public double FontSize { get; set; } = 14d;
          public FontWeight FontWeight { get; set; } = FontWeights.Normal;
-        public System.Windows.FontStyle FontStyle { get; set; } = FontStyles.Normal;
+         public System.Windows.FontStyle FontStyle { get; set; } = FontStyles.Normal;
          public TextDecorationCollection? TextDecorations { get; set; }
-       public System.Windows.Media.Brush? Foreground { get; set; }
+         public System.Windows.Media.Brush? Foreground { get; set; }
          public Thickness Margin { get; set; } = new Thickness(0);
          public double TextIndent { get; set; }
       }
@@ -241,18 +241,7 @@ namespace StickIt
          }
       }
 
-      private bool TryEnterMode2DesktopFallback()
-      {
-         var center = GetNoteCenterPx();
-         var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTargetAtPoint(
-            (int)Math.Round(center.X),
-            (int)Math.Round(center.Y));
-         if (desk != null && desk.Hwnd != IntPtr.Zero)
-            return EnterStuckMode2WithTarget(desk, allowDesktopFallback: false);
 
-         CenterOnPrimaryScreen();
-         return RevertToNotStuck();
-      }
 
       private bool RevertToNotStuck()
       {
@@ -516,13 +505,13 @@ namespace StickIt
             if (ctrl && (e.Key == Key.Z || e.Key == Key.Y))
                NoteUndoRedoRequested?.Invoke(this, EventArgs.Empty);
 
-         if ((Keyboard.Modifiers & (ModifierKeys.Shift | ModifierKeys.Control | ModifierKeys.Alt)) == ModifierKeys.Shift
-            && e.Key == Key.Enter)
-         {
-            EditingCommands.EnterParagraphBreak.Execute(null, txtNoteContent);
-            e.Handled = true;
-            return;
-         }
+            if ((Keyboard.Modifiers & (ModifierKeys.Shift | ModifierKeys.Control | ModifierKeys.Alt)) == ModifierKeys.Shift
+               && e.Key == Key.Enter)
+            {
+               EditingCommands.EnterParagraphBreak.Execute(null, txtNoteContent);
+               e.Handled = true;
+               return;
+            }
 
             if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)
                      && e.Key == Key.X)
@@ -548,7 +537,7 @@ namespace StickIt
          UpdateLineSpacing();
 
          // Keep autosave behavior consistent regardless of constructor use
-        txtNoteContent.TextChanged += TxtNoteContent_TextChanged;
+         txtNoteContent.TextChanged += TxtNoteContent_TextChanged;
          txtNoteTitle.TextChanged += TxtNoteTitle_TextChanged;
 
 
@@ -557,24 +546,24 @@ namespace StickIt
 
          KeyDown += (_, e) =>
          {
-				if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)
-					&& e.Key == Key.S)
-				{
-					btnPinCycle_Click(this, new RoutedEventArgs());
-					e.Handled = true;
-					return;
-				}
+            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Shift)
+               && e.Key == Key.S)
+            {
+               btnPinCycle_Click(this, new RoutedEventArgs());
+               e.Handled = true;
+               return;
+            }
 
-				if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift)
-					&& e.Key == Key.S)
-				{
-					if (_noteStuckMode == 2)
-						Sticky_NotStuck_Click(this, new RoutedEventArgs());
-					else
-						Sticky_Auto_Click(this, new RoutedEventArgs());
-					e.Handled = true;
-					return;
-				}
+            if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift)) == (ModifierKeys.Control | ModifierKeys.Alt | ModifierKeys.Shift)
+               && e.Key == Key.S)
+            {
+               if (_noteStuckMode == 2)
+                  Sticky_NotStuck_Click(this, new RoutedEventArgs());
+               else
+                  Sticky_Auto_Click(this, new RoutedEventArgs());
+               e.Handled = true;
+               return;
+            }
 
             // Ctrl+N / Ctrl+W / Ctrl+M
             if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
@@ -582,7 +571,7 @@ namespace StickIt
                switch (e.Key)
                {
                   case Key.N:
-                     AppInstance.CreateNewNoteNear(this);
+                     AppInstance.CreateNewNoteNear(this);   // makes a new note near cursor or current note
                      e.Handled = true;
                      return;
 
@@ -595,7 +584,7 @@ namespace StickIt
                      if (_noteStuckMode == 2)
                         return;
 
-                     WindowState = WindowState.Minimized;
+                     WindowState = WindowState.Minimized;  // minimize note (does not delete)
                      AppInstance.QueueSaveFromWindow();
                      e.Handled = true;
                      return;
@@ -719,7 +708,7 @@ namespace StickIt
          if (v is TextDecorationCollection col)
          {
             // clone so we don't mutate a shared instance
-            return new TextDecorationCollection(col.Select(d => d.Clone()));
+            return [.. col.Select(d => d.Clone())];
          }
          return new TextDecorationCollection();
       }
@@ -839,8 +828,7 @@ namespace StickIt
                if (_inkToolbarSnapEnabled)
                   PositionInkToolbar();
             }
-         }
-         else
+         } else
          {
             if (_inkToolbarWindow?.IsVisible == true)
                _inkToolbarWindow.Hide();
@@ -988,18 +976,15 @@ namespace StickIt
          {
             _inkToolbarDock = InkToolbarDock.Right;
             _inkToolbarDockOffset = toolbarRect.Top - noteRect.Top;
-         }
-         else if (minDistance == leftDistance)
+         } else if (minDistance == leftDistance)
          {
             _inkToolbarDock = InkToolbarDock.Left;
             _inkToolbarDockOffset = toolbarRect.Top - noteRect.Top;
-         }
-         else if (minDistance == topDistance)
+         } else if (minDistance == topDistance)
          {
             _inkToolbarDock = InkToolbarDock.Top;
             _inkToolbarDockOffset = toolbarRect.Left - noteRect.Left;
-         }
-         else
+         } else
          {
             _inkToolbarDock = InkToolbarDock.Bottom;
             _inkToolbarDockOffset = toolbarRect.Left - noteRect.Left;
@@ -1116,8 +1101,8 @@ namespace StickIt
          if (_note != null && Enum.TryParse(keyName, out NoteColors.NoteColor key))
          {
             _note.ColorKey = key;
-        ApplyDefaultInkAttributes();
-      }
+            ApplyDefaultInkAttributes();
+         }
       }
 
       private void ColorMenuItem_Click(object sender, RoutedEventArgs e)
@@ -1131,8 +1116,8 @@ namespace StickIt
          if (menuItem.Tag is string tag && Enum.TryParse(tag, out NoteColors.NoteColor color))
          {
             _note.ColorKey = color;
-        ApplyDefaultInkAttributes();
-      }
+            ApplyDefaultInkAttributes();
+         }
       }
 
       private void btnClose_Click(object sender, RoutedEventArgs e)
@@ -1150,6 +1135,9 @@ namespace StickIt
          WindowState = WindowState.Minimized;
       }
 
+
+      //GEMINI IN
+
       private void btnPinCycle_Click(object sender, RoutedEventArgs e)
       {
          // Cycle: 0 -> 1 -> 2 -> 0
@@ -1157,10 +1145,7 @@ namespace StickIt
 
          if (next == 2)
          {
-            if (StickToWindowUnderMe())
-               return;
-
-            TryEnterMode2DesktopFallback();
+            StickToWindowUnderMe(); // Automatically handles fallbacks and reverts
             return;
          }
 
@@ -1176,6 +1161,28 @@ namespace StickIt
 
          AppInstance.QueueSaveFromWindow();
       }
+
+      private void Sticky_Auto_Click(object sender, RoutedEventArgs e)
+      {
+         StickToWindowUnderMe();
+      }
+
+      public void EnsureStickyTargetOnLoad()
+      {
+         if (_noteStuckMode != 2)
+            return;
+
+         // 1) Try persisted target rebind
+         if (TryRebindStickyTarget() && SnapToStickyTargetNow() && IsNoteVisibleOnAnyScreen())
+            return;
+
+         // 2) If that fails, execute the full pipeline (Window -> Fallbacks -> Desktop -> Mode 0)
+         StickToWindowUnderMe();
+      }
+
+      //GEMINI OUT
+
+
 
       private void ApplyFontToSelection(string familyName, double sizePt, bool bold, bool italic)
       {
@@ -1231,14 +1238,6 @@ namespace StickIt
          UpdateCaretBrush();
 
       }
-
-
-
-
-
-
-
-
 
       public string? GetRtf()
       {
@@ -1354,7 +1353,7 @@ namespace StickIt
          {
             if (_note != null)
                _note.ColorKey = key;
-          ApplyDefaultInkAttributes();
+            ApplyDefaultInkAttributes();
             UpdateCaretBrush();
             AppInstance.QueueSaveFromWindow(); // we’ll add this tiny helper in App
          }
@@ -1484,25 +1483,25 @@ namespace StickIt
       private void Menu_SyncNow(object sender, RoutedEventArgs e)
       {
          if (AppInstance.TrySyncNow(out var message))
-          System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Information);
          else
-           System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(this, message, "Sync", MessageBoxButton.OK, MessageBoxImage.Warning);
       }
 
       private void Menu_SyncPullNow(object sender, RoutedEventArgs e)
       {
          if (AppInstance.TryPullFromSync(out var message))
-          System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Information);
          else
-           System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(this, message, "Sync Pull", MessageBoxButton.OK, MessageBoxImage.Warning);
       }
 
       private void Menu_SyncPushNow(object sender, RoutedEventArgs e)
       {
          if (AppInstance.TryPushToSync(out var message))
-          System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Information);
          else
-           System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(this, message, "Sync Push", MessageBoxButton.OK, MessageBoxImage.Warning);
       }
 
       private void Menu_ExportNote(object sender, RoutedEventArgs e)
@@ -1698,12 +1697,10 @@ namespace StickIt
          if (settings.ApplyToSelection)
          {
             range = new TextRange(txtNoteContent.Selection.Start, txtNoteContent.Selection.End);
-         }
-         else if (settings.ApplyToEntireNote)
+         } else if (settings.ApplyToEntireNote)
          {
             range = new TextRange(txtNoteContent.Document.ContentStart, txtNoteContent.Document.ContentEnd);
-         }
-         else
+         } else
          {
             range = new TextRange(txtNoteContent.Document.ContentStart, txtNoteContent.Document.ContentEnd);
 
@@ -2035,98 +2032,132 @@ namespace StickIt
       }
 
 
+
+      //GEMINI IN
+
       public bool StickToWindowUnderMe()
       {
-         var target = TryGetTargetWindowUnderNote();
-         if (target == null)
-            return TryEnterMode2DesktopFallback();
-
-         return EnterStuckMode2WithTarget(target, allowDesktopFallback: true);
-      }
-
-
-
-
-      private bool EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target, bool allowDesktopFallback)
-      {
-         if (target == null || target.Hwnd == IntPtr.Zero)
-            return allowDesktopFallback ? TryEnterMode2DesktopFallback() : RevertToNotStuck();
-
          try
          {
-         _stickyTarget = target;
-         UpdateStickyTargetAnchorFromCurrentNote();
+            var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            var center = GetNoteCenterPx();
 
-         var isDesktopTarget = IsDesktopLikeTarget(target);
+            // 1, 2, 3) Get filtered candidates (already sorted in Z-order top-to-bottom)
+            var candidates = StickIt.Sticky.Services.StickyHitTestService.GetValidTargetsUnderNote(center, myHwnd);
 
-         // LOCAL AOT: make note owned by target (stays above target, not globally TopMost)
-         if (isDesktopTarget)
-            ClearLocalAotOwner();
-         else
-            ApplyLocalAotOwner(target.Hwnd);
+            // 4) Try primary target. If it fails, loop automatically tries the next valid window in Z-order.
+            foreach (var target in candidates)
+            {
+               if (TryAttachToTarget(target))
+                  return true;
+            }
 
-         StuckMode = 2;
-         Topmost = false;
+            // 4) Fallback to desktop if the candidate list is exhausted or empty
+            if (TryEnterMode2DesktopFallback())
+               return true;
 
-         _stickyOffsetXPx = null;
-         _stickyOffsetYPx = null;
-         _lastTargetX = null;
-         _lastTargetY = null;
-
-         if (isDesktopTarget)
-            StopHook();
-         else
-            EnsureHookForStickyTarget();
-         UpdateStickyVisuals();
-
-         // ONE-SHOT snap so user sees it stick immediately and z-order is corrected.
-         var ok = SnapToStickyTargetNow();
-
-         if (ok)
-            ok = IsNoteVisibleOnAnyScreen();
-
-         // TEMP: set the menu item header so you can see success without breakpoints
-         if (miSticky_SnapNow != null)
-            miSticky_SnapNow.Header = ok ? "Snap to target now (OK)" : "Snap to target now (FAILED)";
-
-         if (!ok)
-         {
-            if (allowDesktopFallback)
-               return TryEnterMode2DesktopFallback();
-
-            CenterOnPrimaryScreen();
+            // 5) VERIFICATION FEEDBACK: If all fallbacks fail, revert to Mode 0
             return RevertToNotStuck();
-         }
-
-         AppInstance.QueueSaveFromWindow();
-         return true;
          }
          catch
          {
-            if (allowDesktopFallback)
-               return TryEnterMode2DesktopFallback();
-
-            CenterOnPrimaryScreen();
             return RevertToNotStuck();
          }
       }
 
-
-
-
-
-
-      private void Sticky_Auto_Click(object sender, RoutedEventArgs e)
+      private bool TryAttachToTarget(StickIt.Sticky.StickyTargetInfo target)
       {
-         var t = TryGetTargetWindowUnderNote();
-         if (t != null)
+         if (target == null || target.Hwnd == IntPtr.Zero) return false;
+
+         try
          {
-            if (EnterStuckMode2WithTarget(t, allowDesktopFallback: true))
-               return;
+            _stickyTarget = target;
+            UpdateStickyTargetAnchorFromCurrentNote();
+
+            var isDesktopTarget = IsDesktopLikeTarget(target);
+
+            if (isDesktopTarget)
+               ClearLocalAotOwner();
+            else
+               ApplyLocalAotOwner(target.Hwnd);
+
+            StuckMode = 2;
+            Topmost = false;
+
+            _stickyOffsetXPx = null;
+            _stickyOffsetYPx = null;
+            _lastTargetX = null;
+            _lastTargetY = null;
+
+            if (isDesktopTarget)
+               StopHook();
+            else
+               EnsureHookForStickyTarget();
+
+            UpdateStickyVisuals();
+
+            // 5) VERIFICATION FEEDBACK: Ensure the snap actually worked and didn't throw the note off-screen
+            var ok = SnapToStickyTargetNow();
+            if (ok) ok = IsNoteVisibleOnAnyScreen();
+
+            if (miSticky_SnapNow != null)
+               miSticky_SnapNow.Header = ok ? "Snap to target now (OK)" : "Snap to target now (FAILED)";
+
+            if (ok)
+            {
+               AppInstance.QueueSaveFromWindow();
+               return true;
+            }
+
+            // Cleanup state if attachment failed so the next loop iteration starts fresh
+            ClearLocalAotOwner();
+            return false;
+         }
+         catch
+         {
+            ClearLocalAotOwner();
+            return false;
+         }
+      }
+
+      private bool EnterStuckMode2WithTarget(StickIt.Sticky.StickyTargetInfo target, bool allowDesktopFallback)
+      {
+         // Used primarily by Path 3 (The Picker Window)
+         if (TryAttachToTarget(target))
+            return true;
+
+         if (allowDesktopFallback && TryEnterMode2DesktopFallback())
+            return true;
+
+         CenterOnPrimaryScreen();
+         return RevertToNotStuck();
+      }
+
+      private bool TryEnterMode2DesktopFallback()
+      {
+         var center = GetNoteCenterPx();
+         var desk = StickIt.Sticky.Services.DesktopTargetService.TryGetDesktopTargetAtPoint(
+            (int)Math.Round(center.X),
+            (int)Math.Round(center.Y));
+
+         if (desk != null && desk.Hwnd != IntPtr.Zero)
+         {
+            if (TryAttachToTarget(desk))
+               return true;
          }
 
-         TryEnterMode2DesktopFallback();
+         CenterOnPrimaryScreen();
+         return RevertToNotStuck();
       }
+
+      //GEMINI OUT
+
+
+
+
+
+
+
       private void Sticky_Pick_Click(object sender, RoutedEventArgs e)
       {
          var dlg = new StickIt.Sticky.StickyTargetPickerWindow { Owner = this };
@@ -2138,44 +2169,7 @@ namespace StickIt
 
          TryEnterMode2DesktopFallback();
       }
-      private StickIt.Sticky.StickyTargetInfo? TryGetTargetWindowUnderNote()
-      {
-         var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-         var noteTopLeftPx = GetNoteTopLeftPx();
-         var dpi = VisualTreeHelper.GetDpi(this);
 
-         var insetX = Math.Max(6.0, Math.Min(24.0, Width / 4.0));
-         var insetY = Math.Max(6.0, Math.Min(24.0, Height / 4.0));
-
-         var maxX = Math.Max(0, Width - insetX);
-         var maxY = Math.Max(0, Height - insetY);
-
-         var samplePoints = new[]
-         {
-            new System.Windows.Point(Width * 0.50, Height * 0.50),
-            new System.Windows.Point(insetX, insetY),
-            new System.Windows.Point(maxX, insetY),
-            new System.Windows.Point(insetX, maxY),
-            new System.Windows.Point(maxX, maxY)
-         };
-
-         foreach (var sample in samplePoints)
-         {
-            int x = (int)Math.Round(noteTopLeftPx.X + (sample.X * Math.Max(0.01, dpi.DpiScaleX)));
-            int y = (int)Math.Round(noteTopLeftPx.Y + (sample.Y * Math.Max(0.01, dpi.DpiScaleY)));
-
-            var target = StickIt.Sticky.Services.StickyHitTestService.GetTopmostWindowUnderPoint(
-               x,
-               y,
-               System.Diagnostics.Process.GetCurrentProcess().Id,
-               myHwnd);
-
-            if (target != null)
-               return target;
-         }
-
-         return null;
-      }
 
 
 
@@ -2515,26 +2509,7 @@ namespace StickIt
          StopHook();
       }
 
-      public void EnsureStickyTargetOnLoad()
-      {
-         if (_noteStuckMode != 2)
-            return;
 
-         // 1) Try persisted target rebind
-         if (TryRebindStickyTarget() && SnapToStickyTargetNow() && IsNoteVisibleOnAnyScreen())
-            return;
-
-         // 2) If that fails, try “window under note”
-         if (StickToWindowUnderMe())
-            return;
-
-         // 3) Desktop fallback
-         if (TryEnterMode2DesktopFallback())
-            return;
-
-         // 4) Last resort
-         RevertToNotStuck();
-      }
 
 
       private void Sticky_SnapNow_Click(object sender, RoutedEventArgs e)
@@ -2556,7 +2531,7 @@ namespace StickIt
 
          miSticky_Auto.IsChecked = (_noteStuckMode == 2);
          miSticky_Pick.IsChecked = false; // picker is an action, not a state
-         miSticky_NotStuck.IsChecked = (_noteStuckMode == 0);  
+         miSticky_NotStuck.IsChecked = (_noteStuckMode == 0);
          miSticky_AOT.IsChecked = (_noteStuckMode == 1);
 
          // When stuck-to-window, make “Not stuck” read as “Un-stick note”
@@ -2604,8 +2579,7 @@ namespace StickIt
                StickyOverlay.BorderThickness = new Thickness(0);
                StickyOverlay.BorderBrush = System.Windows.Media.Brushes.Transparent;
             }
-         }
-         else
+         } else
          {
             NoteChrome.BorderThickness = new Thickness(2);
 
@@ -2667,8 +2641,7 @@ namespace StickIt
          {
             nextPrefix = $"{bulletIndent}{_autoListBulletSymbol}{spacing}";
             currentContent = bulletContent;
-         }
-         else if (TryParseFormattedNumberLine(text, out var numberIndent, out var currentNumber, out var numberContent))
+         } else if (TryParseFormattedNumberLine(text, out var numberIndent, out var currentNumber, out var numberContent))
          {
             nextPrefix = $"{numberIndent}{currentNumber + 1}{_autoListNumberSuffix}{spacing}";
             isNumbered = true;
@@ -2695,8 +2668,7 @@ namespace StickIt
                _consecutiveEmptyListEnterCount = 0;
                return false;
             }
-         }
-         else
+         } else
          {
             _consecutiveEmptyListEnterCount = 0;
          }
@@ -2929,15 +2901,15 @@ namespace StickIt
          if (string.IsNullOrWhiteSpace(text))
             return false;
 
-          var match = NumberTriggerRegex.Match(text);
-          if (!match.Success)
-             return false;
-
-          indent = match.Groups[1].Value;
-          if (!int.TryParse(match.Groups[2].Value, out number))
+         var match = NumberTriggerRegex.Match(text);
+         if (!match.Success)
             return false;
 
-          content = match.Groups[4].Value ?? string.Empty;
+         indent = match.Groups[1].Value;
+         if (!int.TryParse(match.Groups[2].Value, out number))
+            return false;
+
+         content = match.Groups[4].Value ?? string.Empty;
          return true;
       }
 
@@ -3039,7 +3011,7 @@ namespace StickIt
          _suppressAutoListHandling = true;
          try
          {
-          ApplyParagraphTemplateStyle(paragraph, isNumbered ? _autoListNumberTemplateRtf : _autoListBulletTemplateRtf, text);
+            ApplyParagraphTemplateStyle(paragraph, isNumbered ? _autoListNumberTemplateRtf : _autoListBulletTemplateRtf, text);
          }
          finally
          {
@@ -3139,7 +3111,7 @@ namespace StickIt
          {
             var doc = new FlowDocument();
             using var ms = new MemoryStream(Encoding.UTF8.GetBytes(templateRtf));
-          new TextRange(doc.ContentStart, doc.ContentEnd).Load(ms, System.Windows.DataFormats.Rtf);
+            new TextRange(doc.ContentStart, doc.ContentEnd).Load(ms, System.Windows.DataFormats.Rtf);
 
             var para = doc.Blocks.OfType<Paragraph>().FirstOrDefault();
             if (para == null)
@@ -3210,7 +3182,7 @@ namespace StickIt
          _autoListBulletTemplateRtf = prefs.AutoListBulletTemplateRtf;
          _autoListNumberTemplateRtf = prefs.AutoListNumberTemplateRtf;
          _enableTodoTitleTrigger = prefs.EnableTodoTitleTrigger;
-        if (!_enableTodoTitleTrigger)
+         if (!_enableTodoTitleTrigger)
          {
             _todoTitleArmed = false;
             _todoTemplateApplied = false;
@@ -3232,7 +3204,7 @@ namespace StickIt
             }
 
             txtNoteTitle.FontSize = prefs.TitleFontSize;
-           txtNoteTitle.FontWeight = prefs.TitleFontBold ? FontWeights.Bold : FontWeights.Normal;
+            txtNoteTitle.FontWeight = prefs.TitleFontBold ? FontWeights.Bold : FontWeights.Normal;
          }
 
          if (_note != null)
@@ -3271,8 +3243,7 @@ namespace StickIt
             {
                ClampMode2LiftToHostBounds();
                RecalculateStickyOffsetFromCurrentPosition();
-            }
-            else
+            } else
             {
                SnapToStickyTargetNow();
             }
@@ -3380,7 +3351,7 @@ namespace StickIt
 
 
 
-      
+
 
 
 

@@ -1,136 +1,65 @@
-﻿using System;
-using System.Diagnostics;
+﻿//GEMINI IN
+
+using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
+using StickIt.Services;
 
 namespace StickIt.Sticky.Services
 {
-	public static class StickyHitTestService
-	{
-		public static StickyTargetInfo? GetTopmostWindowUnderPoint(
-	int screenX,
-	int screenY,
-	int excludePid,
-	IntPtr excludeHwnd)
-		{
-			var pt = new POINT { X = screenX, Y = screenY };
+    public static class StickyHitTestService
+    {
+        /// <summary>
+        /// Retrieves a Z-ordered list of valid application windows physically located underneath the note's center.
+        /// </summary>
+        
+        public static List<StickyTargetInfo> GetValidTargetsUnderNote(System.Windows.Point noteCenter, IntPtr excludeHwnd)
+        {
+            var considerList = new List<StickyTargetInfo>();
 
-			IntPtr hwnd = WindowFromPoint(pt);
-			if (hwnd == IntPtr.Zero) return null;
+            try
+            {
+                // 1) BYPASS OLD TARGETING: Use the robust enumeration service (already filters invisible/tool windows)
+                var allWindows = WindowEnumerationService.GetTopLevelWindows();
 
-			// Walk down the z-order until we find a usable window
-			for (int i = 0; i < 80 && hwnd != IntPtr.Zero; i++)
-			{
-				var root = GetAncestor(hwnd, GA_ROOT);
-				if (root != IntPtr.Zero) hwnd = root;
+                foreach (var win in allWindows)
+                {
+                    // 2) CANDIDATE FILTERING: Exclude the note itself
+                    if (win.Hwnd == excludeHwnd) 
+                        continue;
 
-				// Skip our own note window
-				if (excludeHwnd != IntPtr.Zero && hwnd == excludeHwnd)
-				{
-					hwnd = GetWindow(hwnd, GW_HWNDNEXT);
-					continue;
-				}
+                    // 3) BOUNDARY STRIPPING: Exclude minimized (iconic) windows
+                    if (IsIconic(win.Hwnd)) 
+                        continue;
 
-				if (!IsWindowVisible(hwnd))
-				{
-					hwnd = GetWindow(hwnd, GW_HWNDNEXT);
-					continue;
-				}
+                    // 3) BOUNDARY STRIPPING: Ensure valid dimensions and spatial intersection
+                    if (WindowRectService.TryGetWindowRect(win.Hwnd, out var rect))
+                    {
+                        if (rect.Width <= 0 || rect.Height <= 0) 
+                            continue;
 
-				GetWindowThreadProcessId(hwnd, out var pid);
-				if ((int) pid == excludePid)
-				{
-					hwnd = GetWindow(hwnd, GW_HWNDNEXT);
-					continue;
-				}
+                        // Check if the note's center point is physically inside this window's bounding box
+                        if (noteCenter.X >= rect.X && noteCenter.X <= rect.X + rect.Width &&
+                            noteCenter.Y >= rect.Y && noteCenter.Y <= rect.Y + rect.Height)
+                        {
+                            considerList.Add(win);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // 6) ERROR ISOLATION: Fail silently without crashing the UI thread
+            }
 
-            var cls = GetClassNameSafe(hwnd);
-			 if (IsDesktopHost(cls) || IsIgnoredHost(cls))
-					return null;
+            // 4) Z-ORDER TRACKING: EnumWindows inherently returns top-to-bottom Z-order. 
+            // The first item in this list is the primary target; the rest are fallbacks.
+            return considerList;
+        }
 
-				if (!StickIt.Services.VirtualDesktopManagerService.IsWindowOnCurrentVirtualDesktop(hwnd))
-				{
-					hwnd = GetWindow(hwnd, GW_HWNDNEXT);
-					continue;
-				}
-
-				var title = GetWindowTextSafe(hwnd);
-
-				string? procName = null;
-				try { procName = Process.GetProcessById((int) pid).ProcessName; } catch { }
-
-				return new StickyTargetInfo
-				{
-					Hwnd = hwnd,
-					ProcessId = (int) pid,
-					ProcessName = procName,
-					WindowTitle = title,
-					ClassName = cls,
-					CapturedUtc = DateTime.UtcNow
-				};
-			}
-
-			return null;
-		}
-
-		private static bool IsDesktopHost(string className)
-			=> string.Equals(className, "Progman", StringComparison.Ordinal)
-			   || string.Equals(className, "WorkerW", StringComparison.Ordinal);
-
-		private static bool IsIgnoredHost(string className)
-			=> string.Equals(className, "Shell_TrayWnd", StringComparison.Ordinal)
-				|| string.Equals(className, "Shell_SecondaryTrayWnd", StringComparison.Ordinal)
-				|| string.Equals(className, "NotifyIconOverflowWindow", StringComparison.Ordinal);
-
-
-		// ---- Win32 ----
-
-		[StructLayout(LayoutKind.Sequential)]
-		private struct POINT { public int X; public int Y; }
-
-		[DllImport("user32.dll")]
-		private static extern IntPtr WindowFromPoint(POINT pt);
-
-		[DllImport("user32.dll")]
-		private static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
-
-		private const uint GA_ROOT = 2;
-
-		[DllImport("user32.dll")]
-		private static extern bool IsWindowVisible(IntPtr hWnd);
-
-		[DllImport("user32.dll")]
-		private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-		[DllImport("user32.dll")]
-		private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-		[DllImport("user32.dll")]
-		private static extern int GetWindowTextLength(IntPtr hWnd);
-
-		[DllImport("user32.dll")]
-		private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
-
-		[DllImport("user32.dll")]
-		private static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
-
-		private const uint GW_HWNDNEXT = 2;
-
-
-		private static string GetWindowTextSafe(IntPtr hwnd)
-		{
-			var len = GetWindowTextLength(hwnd);
-			if (len <= 0) return string.Empty;
-			var sb = new StringBuilder(len + 1);
-			GetWindowText(hwnd, sb, sb.Capacity);
-			return sb.ToString();
-		}
-
-		private static string GetClassNameSafe(IntPtr hwnd)
-		{
-			var sb = new StringBuilder(256);
-			GetClassName(hwnd, sb, sb.Capacity);
-			return sb.ToString();
-		}
-	}
+        [DllImport("user32.dll")]
+        private static extern bool IsIconic(IntPtr hWnd);
+    }
 }
+
+//GEMINI OUT

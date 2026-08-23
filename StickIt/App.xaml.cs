@@ -24,7 +24,7 @@ namespace StickIt
 		private PreferencesWindow? _preferencesWindow;
 
 		private System.Threading.Mutex? _singleInstanceMutex;
-		private const int MaxNotesToAutoOpen = 25;
+      private const int MaxNotesToAutoOpen = 25;
 
       private double _nextSpawnLeft = 200;
       private double _nextSpawnTop = 200;
@@ -48,7 +48,7 @@ namespace StickIt
 
 			ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-			bool createdNew;
+         bool createdNew;
 			_singleInstanceMutex = new System.Threading.Mutex(true, @"Global\969Studios.StickIt.v4", out createdNew);
 
 			if (!createdNew)
@@ -249,32 +249,48 @@ namespace StickIt
 			Shutdown();
 		}
 
-		protected override void OnExit(ExitEventArgs e)
-		{
-			try
-			{
-				_noteManagerWindow?.Close();
-			}
-			catch
-			{
-				// best-effort
-			}
+      //Gemini in
 
-			_noteManagerWindow = null;
-			_preferencesWindow = null;
+      protected override void OnExit(ExitEventArgs e)
+      {
+         try
+         {
+            _noteManagerWindow?.Close();
+         }
+         catch
+         {
+            // best-effort
+         }
 
-			_tray?.Dispose();
-			_tray = null;
+         _noteManagerWindow = null;
+         _preferencesWindow = null;
 
-			try { _singleInstanceMutex?.ReleaseMutex(); }
-			catch { /* ignore */ }
+         _tray?.Dispose();
+         _tray = null;
 
-			_singleInstanceMutex?.Dispose();
-			_singleInstanceMutex = null;
+         // Only release if THIS instance actually created and owns the mutex
+         if (_singleInstanceMutex != null)
+         {
+            //if (_ownsMutex)
+            //{
+            //   try
+            //   {
+            //      _singleInstanceMutex.ReleaseMutex();
+            //   }
+            //   catch
+            //   {
+            //      // Fallback catch just in case of thread-identity mismatch during shutdown
+            //   }
+            //}
 
+            _singleInstanceMutex.Dispose();
+            _singleInstanceMutex = null;
+         }
 
-			base.OnExit(e);
-		}
+         base.OnExit(e);
+      }
+
+      //Gemini out
 
 
       public void CreateNewNoteFromTray()
