@@ -3,12 +3,10 @@
 Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, blah, blah.
 
 ## So one day I was sitting in class, using an Apple and I noticed the version of 'Post-It" notes they get to use and play around with.
-## And then I looked at the version that Windows has and it lit a fire! It isn't fair that Swift programs look way more polished and dont make me feel embarrassed to use them in public.
+## And then I looked at the version that Windows has and it made me sad at first and then it lit a fire! It isn't fair that Swift programs look way more polished and dont make me feel embarrassed to use them in public.
 
-### Then the teacher got mad at me for interrupting them with yelling about how embarrassing the post-it note situation was. 
-### The professor didnt understand or was not impressed with my lack of arguments presented...  i dont recall which it was....
-### Six or eight months later I remembered that I needed to make a post-it note program for these raisins.  
--<u>But this one would more accurately mimick the real world.</u>-
+### Later, after I remembered that I needed to make a post-it note program for these raisins, 
+-<u>I decided this version would more accurately mimick the real world.</u>-
 
 ### THIS meant: 
 - no resizing
@@ -16,18 +14,16 @@ Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, 
 - you can stick your notes to any surface and they will stay there for the most part
 - no videos or music! how tf would you do that in real life!?!? get real!!
 - i did add some list tmeplating to make things easier.
-- i also added support for windows ink, so now you can draw on your notes! but dont do it like mine, i cant read my handwriting.. :(
+- i also added support for windows ink, so now you can draw on your notes! unfortunately for me i cant read my handwriting.. :(
 - theres probably a bunch of other things I thought of and already forgot about too.
 
 ### So, before you read the next section -OR- use the app, just keep in mind I was aiming for realism.
 
 ## So, then I found that neato program 'Notezilla' and saw how free it isnt, and then i saw how much they they think it is worth.   
 
-## I ignorantly turned and stated to a random passerby, "I can do what you do!!! You better watch out!"
+## So I thought at some random person, "I can do what you do!!! You better watch out! I can do it better and cheaper!"
 
 ## I startled them so profusely that they punched me to get away--strong tactic and choice on their part. 
-
-### i thought about what I had done and the response I got in return. I have to say, "yes, I agree!" with that cheap-shotting-stranger: "screw capitalism!"
 
 #
 #
@@ -43,10 +39,11 @@ Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, 
   - Save all notes
   - Exit app
 - Single-instance app behavior
-- Restore notes on startup (with monitor-aware placement)
+- Restore notes on startup (with monitor-aware and virtual desktop aware placement)
 - Optional “keep notes inside desktop area”
 - Preferences for theme, taskbar/tray visibility, startup behavior, and default font
-- ~Optional~ Required sticky target behavior for notes
+- Finally fixed sticking behavior. Notes should now stick to any window with 1 click!
+- Extensive help file coming soon.
 
 ## Tech Stack
 
@@ -95,18 +92,17 @@ Application state is persisted as JSON and includes:
 
 ## Roadmap
 
-- [ ] ~Search/filter notes~  no, probably not, copilot.
+- [ ] ~Search/filter notes~  haha, no, probably not, copilot.
 - [X] Import/export notes
 - [x] Optional cloud sync - it works if you use sync.com or something similar.
 - [ ] Keyboard shortcut customization  - *meh, we'll see.*
 
-## Contributing
+## Contributing Conclusions
 
 - Feel free to fix any mistakes I've made (including this haircut! You're just lucky you don't have to see it).
 - Um, I wasn't originally going to make this available to the public for all the raisins, but i did, so don't make regret it by making me fix a bunch of code...
-- Insstead, just make co-pilot vibe it out.
 
-## Conclusions
+## Epilogue
 
 - Ok, now get off your computer or phone and go outside. 
 
