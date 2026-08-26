@@ -37,9 +37,6 @@ namespace StickIt.Persistence
 
 		public StickyTargetPersist? StickyTargetPersist { get; set; } = null;
 
-		public int StickyMode { get; set; } = 0;       // your StuckMode
-		public string? StickyTarget { get; set; } = null;
-
 		public bool IsMinimized { get; set; } = false; // already present; keep one canonical field
 
 		// Phase-3 readiness: monitor affinity metadata for smarter multi-monitor restore.
@@ -52,9 +49,6 @@ namespace StickIt.Persistence
 
 		// 0 = not stuck, 1 = always-on-top, 2 = stuck-to-program (future)
 		public int StuckMode { get; set; } = 0;
-
-		// Optional placeholder for future “stuck to program” targeting (safe to ignore for now)
-		public string? StuckTarget { get; set; } = null;
 	}
 
 	public sealed class StickItState

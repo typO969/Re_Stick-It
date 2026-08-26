@@ -1,0 +1,153 @@
+﻿<Window
+    x:Class="StickIt.aboutWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:StickIt"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="About StickIt"
+    Width="420"
+    Height="360"
+    AllowsTransparency="True"
+    Background="Transparent"
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterOwner"
+    WindowStyle="None"
+    mc:Ignorable="d">
+
+    <Border
+        Background="#FDFDFD"
+        BorderBrush="#E0E0E0"
+        BorderThickness="1"
+        CornerRadius="12">
+        <Border.Effect>
+            <DropShadowEffect
+                BlurRadius="15"
+                Direction="270"
+                Opacity="0.15"
+                ShadowDepth="2" />
+        </Border.Effect>
+
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <!--  Title/Logo Block  -->
+                <RowDefinition Height="*" />
+                <!--  Main Body & Version Info  -->
+                <RowDefinition Height="Auto" />
+                <!--  Footer Controls  -->
+            </Grid.RowDefinitions>
+
+            <!--  1. Header & System Controls  -->
+            <StackPanel
+                Grid.Row="0"
+                HorizontalAlignment="Stretch"
+                Orientation="Horizontal">
+                <!--  Mini visual icon placeholder (A sleek styled post-it note look)  -->
+                <Border
+                    Width="32"
+                    Height="32"
+                    VerticalAlignment="Center"
+                    Background="#FFE169"
+                    CornerRadius="4">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="16"
+                        Text="📌" />
+                </Border>
+                <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock
+                        FontSize="22"
+                        FontWeight="Bold"
+                        Foreground="#1E1E1E"
+                        Text="re_StickIt" />
+                    <TextBlock
+                        x:Name="txtVersion"
+                        FontSize="11"
+                        Foreground="#757575"
+                        Text="Version 1.0.0" />
+                </StackPanel>
+            </StackPanel>
+
+            <!--  2. Main Content & Info Grid  -->
+            <StackPanel Grid.Row="1" Margin="0,20,0,0">
+                <TextBlock
+                    FontSize="13"
+                    Foreground="#424242"
+                    LineHeight="18"
+                    Text="A lightweight, feature-rich WPF desktop sticky note utility designed for seamless window pairing and fast workflow productivity."
+                    TextWrapping="Wrap" />
+
+                <Separator Margin="0,16,0,16" Background="#EEEEEE" />
+
+                <!--  System / Credit Properties  -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        Margin="0,4,12,4"
+                        FontWeight="SemiBold"
+                        Foreground="#616161"
+                        Text="Developer:" />
+                    <TextBlock
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        Margin="0,4,0,4"
+                        Foreground="#212121"
+                        Text="969 Studios" />
+
+                    <TextBlock
+                        Grid.Row="1"
+                        Grid.Column="0"
+                        Margin="0,4,12,4"
+                        FontWeight="SemiBold"
+                        Foreground="#616161"
+                        Text="Website:" />
+                    <TextBlock
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Margin="0,4,0,4">
+                        <Hyperlink NavigateUri="https://github.com/typo969/Re_StickIt" RequestNavigate="Hyperlink_RequestNavigate">
+                            GitHub Repository
+                        </Hyperlink>
+                    </TextBlock>
+                </Grid>
+            </StackPanel>
+
+            <!--  3. Footer Action  -->
+            <Grid Grid.Row="2" Margin="0,12,0,0">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    Foreground="#9E9E9E"
+                    Text="© 2026 969 Studios. All Rights Reserved." />
+                <Button
+                    Width="80"
+                    Height="28"
+                    HorizontalAlignment="Right"
+                    Background="#F5F5F5"
+                    BorderBrush="#CCCCCC"
+                    Click="CloseButton_Click"
+                    Content="Close"
+                    IsCancel="True">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4" />
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
+

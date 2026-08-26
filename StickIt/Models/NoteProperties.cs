@@ -34,10 +34,6 @@ namespace StickIt.Models
 		public double Y { get; set; }
 		public bool IsMinimized { get; set; }
 
-		// Sticky behavior
-		public int StickyMode { get; set; }     // 0,1,2
-		public string? StickyTarget { get; set; }
-
 		// Content metadata (not content itself)
 		public int CharCount { get; set; }
 		public int WordCount { get; set; }

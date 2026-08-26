@@ -1184,32 +1184,6 @@ namespace StickIt
 
 
 
-      private void ApplyFontToSelection(string familyName, double sizePt, bool bold, bool italic)
-      {
-         var rtb = txtNoteContent;
-         var sel = rtb.Selection;
-
-         // Selection empty => applies to caret typing style (does NOT reformat whole note)
-         TextRange range = new TextRange(sel.Start, sel.End);
-
-         double sizeDip = NormalizeFontSize(PointsToDip(sizePt), _note?.FontSize > 0 ? _note.FontSize : 14.0);
-         var fontFamily = CreateSafeFontFamily(familyName);
-
-         range.ApplyPropertyValue(TextElement.FontFamilyProperty, fontFamily);
-         range.ApplyPropertyValue(TextElement.FontSizeProperty, sizeDip);
-         range.ApplyPropertyValue(TextElement.FontWeightProperty, bold ? FontWeights.Bold : FontWeights.Normal);
-         range.ApplyPropertyValue(TextElement.FontStyleProperty, italic ? FontStyles.Italic : FontStyles.Normal);
-
-         // Persist per-note defaults
-         _note!.FontFamily = fontFamily.Source;
-         _note!.FontSize = sizeDip;
-
-         UpdateLineSpacing();
-         UpdateCaretBrush();
-
-         NoteTextChanged?.Invoke(this, EventArgs.Empty);
-      }
-
       private void InitializeTypingDefaultsFromNote()
       {
 
@@ -1595,8 +1569,6 @@ namespace StickIt
             AppInstance.ApplyFontSettingsToAllOpenNotes(dlg.Settings, this);
       }
 
-
-      private void Menu_LoadNotes(object sender, RoutedEventArgs e) { }
 
       private void Menu_InkMode(object sender, RoutedEventArgs e)
       {
@@ -2207,19 +2179,6 @@ namespace StickIt
 
          var baseHex = NoteColors.Hex[_note.ColorKey];
          return ColorSchemeConverter.GetColor(_note.ColorKey.ToString(), baseHex, ColorComponent.Text);
-      }
-
-      private void ApplyDefaultTextInkToTyping()
-      {
-         if (txtNoteContent == null)
-            return;
-
-         TextPointer start = txtNoteContent.CaretPosition ?? txtNoteContent.Document.ContentStart;
-         start = start.GetInsertionPosition(LogicalDirection.Forward) ?? txtNoteContent.Document.ContentStart;
-
-         var range = new TextRange(start, start);
-         range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(GetDefaultTextColor()));
-         UpdateCaretBrush();
       }
 
       private void ApplyDefaultInkAttributes()

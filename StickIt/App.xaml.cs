@@ -867,6 +867,7 @@ namespace StickIt
 		}
 
 
+// GEMINI IN
 
 		private void SpawnWindow(NotePersist note)
 		{
@@ -952,109 +953,83 @@ namespace StickIt
 		}
 
 
-		private static void ClampToVirtualScreen(NoteWindow w)
-		{
-			double left = SystemParameters.VirtualScreenLeft;
-			double top = SystemParameters.VirtualScreenTop;
-			double width = SystemParameters.VirtualScreenWidth;
-			double height = SystemParameters.VirtualScreenHeight;
+      // 1. Add this new unified helper method
+      private static void ClampWindowToRect(NoteWindow w, double left, double top, double width, double height, double margin)
+      {
+         double right = left + width;
+         double bottom = top + height;
 
-			double right = left + width;
-			double bottom = top + height;
+         if (w.Left + w.Width > right - margin)
+            w.Left = right - w.Width - margin;
+         if (w.Top + w.Height > bottom - margin)
+            w.Top = bottom - w.Height - margin;
 
-			const double margin = 20;
+         if (w.Left < left + margin)
+            w.Left = left + margin;
+         if (w.Top < top + margin)
+            w.Top = top + margin;
 
-			// Clamp right/bottom overflow
-			if (w.Left + w.Width > right - margin)
-				w.Left = right - w.Width - margin;
-			if (w.Top + w.Height > bottom - margin)
-				w.Top = bottom - w.Height - margin;
+         if (w.Width > width - (margin * 2))
+            w.Left = left + margin;
+         if (w.Height > height - (margin * 2))
+            w.Top = top + margin;
+      }
 
-			// Clamp left/top overflow
-			if (w.Left < left + margin)
-				w.Left = left + margin;
-			if (w.Top < top + margin)
-				w.Top = top + margin;
+      // 2. Replace your existing ClampToVirtualScreen
+      private static void ClampToVirtualScreen(NoteWindow w)
+      {
+         ClampWindowToRect(w,
+             SystemParameters.VirtualScreenLeft,
+             SystemParameters.VirtualScreenTop,
+             SystemParameters.VirtualScreenWidth,
+             SystemParameters.VirtualScreenHeight,
+             20);
+      }
 
-			// If window is larger than the virtual screen, at least pin it to the margin.
-			if (w.Width > width - (margin * 2))
-				w.Left = left + margin;
-			if (w.Height > height - (margin * 2))
-				w.Top = top + margin;
-		}
+      // 3. Replace your existing ClampToWorkingArea
+      private static void ClampToWorkingArea(NoteWindow w, System.Windows.Forms.Screen screen)
+      {
+         var wa = screen.WorkingArea;
+         var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(w);
+         double scaleX = Math.Max(0.01, dpi.DpiScaleX);
+         double scaleY = Math.Max(0.01, dpi.DpiScaleY);
 
-		private static void ClampToWorkingArea(NoteWindow w, System.Windows.Forms.Screen screen)
-		{
-			var wa = screen.WorkingArea;
-        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(w);
-			double waLeft = wa.Left / Math.Max(0.01, dpi.DpiScaleX);
-			double waTop = wa.Top / Math.Max(0.01, dpi.DpiScaleY);
-			double waWidth = wa.Width / Math.Max(0.01, dpi.DpiScaleX);
-			double waHeight = wa.Height / Math.Max(0.01, dpi.DpiScaleY);
-			const double margin = 20;
+         ClampWindowToRect(w,
+             wa.Left / scaleX,
+             wa.Top / scaleY,
+             wa.Width / scaleX,
+             wa.Height / scaleY,
+             20);
+      }
 
-        double right = waLeft + waWidth;
-			double bottom = waTop + waHeight;
+      // 4. Replace your existing ClampToPreferredArea
+      private bool ClampToPreferredArea(NoteWindow w)
+      {
+         if (!Preferences.KeepNotesInsideDesktopArea ||
+             Preferences.DesktopAreaLeft is null || Preferences.DesktopAreaTop is null ||
+             Preferences.DesktopAreaWidth is null || Preferences.DesktopAreaHeight is null)
+            return false;
 
-			if (w.Left + w.Width > right - margin)
-				w.Left = right - w.Width - margin;
-			if (w.Top + w.Height > bottom - margin)
-				w.Top = bottom - w.Height - margin;
+         double width = Preferences.DesktopAreaWidth.Value;
+         double height = Preferences.DesktopAreaHeight.Value;
 
-         if (w.Left < waLeft + margin)
-				w.Left = waLeft + margin;
-			if (w.Top < waTop + margin)
-				w.Top = waTop + margin;
+         if (width <= 0 || height <= 0)
+            return false;
 
-       if (w.Width > waWidth - (margin * 2))
-				w.Left = waLeft + margin;
-			if (w.Height > waHeight - (margin * 2))
-				w.Top = waTop + margin;
-		}
+         ClampWindowToRect(w,
+             Preferences.DesktopAreaLeft.Value,
+             Preferences.DesktopAreaTop.Value,
+             width,
+             height,
+             10);
 
-		private bool ClampToPreferredArea(NoteWindow w)
-		{
-			if (!Preferences.KeepNotesInsideDesktopArea)
-				return false;
+         return true;
+      }
 
-			if (Preferences.DesktopAreaLeft is null || Preferences.DesktopAreaTop is null ||
-				Preferences.DesktopAreaWidth is null || Preferences.DesktopAreaHeight is null)
-				return false;
-
-			double left = Preferences.DesktopAreaLeft.Value;
-			double top = Preferences.DesktopAreaTop.Value;
-			double width = Preferences.DesktopAreaWidth.Value;
-			double height = Preferences.DesktopAreaHeight.Value;
-
-			if (width <= 0 || height <= 0)
-				return false;
-
-			double right = left + width;
-			double bottom = top + height;
-
-			const double margin = 10;
-
-			if (w.Left + w.Width > right - margin)
-				w.Left = right - w.Width - margin;
-			if (w.Top + w.Height > bottom - margin)
-				w.Top = bottom - w.Height - margin;
-
-			if (w.Left < left + margin)
-				w.Left = left + margin;
-			if (w.Top < top + margin)
-				w.Top = top + margin;
-
-			if (w.Width > width - (margin * 2))
-				w.Left = left + margin;
-			if (w.Height > height - (margin * 2))
-				w.Top = top + margin;
-
-			return true;
-		}
+// GEMINI OUT
 
 
-
-		private void QueueSave(int delayMs)
+      private void QueueSave(int delayMs)
 		{
        if (_suppressAutoSave)
 				return;
