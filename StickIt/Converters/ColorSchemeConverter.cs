@@ -59,11 +59,11 @@ namespace StickIt.Converters
 		{
 			var sanitizedName = SanitizeColorName(colorName);
 			var background = ParseHex(baseColorHex);
-			var controlBar = Subtract(background, (13, 13, 13));
-			var buttons = Subtract(background, (50, 50, 50));
+			var controlBar = Subtract(background, (10, 10, 10));
+			var buttons = Subtract(background, (40, 40, 40));
 			var highlights = Add(background, (30, 100, 25));
-			var outlines = Halve(background);
-			var text = Subtract(Halve(buttons), (5, 5, 3));
+         var outlines = Subtract(Halve(background), (50, 50, 50));
+         var text = Subtract(Halve(buttons), (5, 5, 3));
 			text = EnsureReadableInk(text, background);
 
 			var components = new Dictionary<ColorComponent, RgbVector>

@@ -60,7 +60,9 @@ namespace StickIt.Persistence
 		public string AutoListNumberSuffix { get; set; } = ".";
       public string AutoListBulletTemplateRtf { get; set; } = string.Empty;
 		public string AutoListNumberTemplateRtf { get; set; } = string.Empty;
-		public bool EnableTodoTitleTrigger { get; set; }
+      // Add this right below AutoListNumberTemplateRtf
+      public string TodoTemplateRtf { get; set; } = string.Empty;
+      public bool EnableTodoTitleTrigger { get; set; }
 		public bool WarnBeforeReplaceOnPull { get; set; } = true;
 
 		public bool SyncEnabled { get; set; }

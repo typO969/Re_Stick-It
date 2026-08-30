@@ -114,6 +114,7 @@ namespace StickIt
       private const double InkToolbarSnapDistance = 24.0;
       private const double SnapGridSizeDefault = 20.0;
       private const double SnapGridSizeLowResolution = 16.0;
+      private string _todoTemplateRtf = string.Empty;
       private static readonly Regex BulletTriggerRegex = new(@"^(\s*)([-*+])\s*(.*)$", RegexOptions.Compiled);
       private static readonly Regex NumberTriggerRegex = new(@"^(\s*)(\d+)([\.)])?\s*(.*)$", RegexOptions.Compiled);
       private static readonly Regex HashTriggerRegex = new(@"^(\s*)#\s*(.*)$", RegexOptions.Compiled);
@@ -131,7 +132,7 @@ namespace StickIt
          if (_suppressTextChanged)
             return;
 
-         CleanupStrikethroughOnEmptyParagraphs();
+         //CleanupStrikethroughOnEmptyParagraphs();
 
          if (_autoListFormattingEnabled)
             TryApplyAutomaticListFormatting();
@@ -159,8 +160,17 @@ namespace StickIt
          if (!string.IsNullOrWhiteSpace(GetText()))
             return;
 
-         var spaces = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
-         SetText($"{_autoListBulletSymbol}{spaces}[ ] Task 1\n{_autoListBulletSymbol}{spaces}[ ] Task 2\n{_autoListBulletSymbol}{spaces}[ ] Task 3");
+         // Apply the custom RTF template if one exists
+         if (!string.IsNullOrWhiteSpace(_todoTemplateRtf))
+         {
+            SetRtf(_todoTemplateRtf);
+         } else
+         {
+            // Fallback just in case the template is completely empty
+            var spaces = new string(' ', Math.Max(1, _autoListSpacesAfterMarker));
+            SetText($"{_autoListBulletSymbol}{spaces}[ ] Task 1\n{_autoListBulletSymbol}{spaces}[ ] Task 2\n{_autoListBulletSymbol}{spaces}[ ] Task 3");
+         }
+
          _todoTemplateApplied = true;
          AppInstance.QueueTextSaveFromWindow();
       }
@@ -440,6 +450,7 @@ namespace StickIt
       {
          InitializeComponent();
 
+         txtNoteContent.IsInactiveSelectionHighlightEnabled = true;
          WpfDataObject.AddPastingHandler(txtNoteContent, TxtNoteContent_Pasting);
 
          Loaded += (_, __) => EnsureStickyTargetOnLoad();
@@ -1375,33 +1386,36 @@ namespace StickIt
       private void Menu_Copy(object sender, RoutedEventArgs e) => txtNoteContent.Copy();
       private void Menu_Paste(object sender, RoutedEventArgs e) => txtNoteContent.Paste();
 
-      private void Menu_TaskCompleted(object sender, RoutedEventArgs e)
+         private void Menu_TaskCompleted(object sender, RoutedEventArgs e)
       {
-         var paragraph = txtNoteContent.CaretPosition?.Paragraph ?? txtNoteContent.Selection.Start?.Paragraph;
-         if (paragraph == null)
-         {
-            ToggleStrikethrough();
-            return;
-         }
+         // ✅ REPLACE the entire method body with this single line:
+         ToggleStrikethrough();
 
-         var range = GetParagraphContentRange(paragraph);
-         var decorations = GetDecorationsOrEmpty(range.GetPropertyValue(Inline.TextDecorationsProperty));
+         //var paragraph = txtNoteContent.CaretPosition?.Paragraph ?? txtNoteContent.Selection.Start?.Paragraph;
+         //if (paragraph == null)
+         //{
+         //   ToggleStrikethrough();
+         //   return;
+         //}
 
-         if (HasDecorationLocation(decorations, TextDecorationLocation.Strikethrough))
-            RemoveDecorationLocation(decorations, TextDecorationLocation.Strikethrough);
-         else
-         {
-            foreach (var d in TextDecorations.Strikethrough)
-               decorations.Add(d.Clone());
-         }
+         //var range = GetParagraphContentRange(paragraph);
+         //var decorations = GetDecorationsOrEmpty(range.GetPropertyValue(Inline.TextDecorationsProperty));
 
-         range.ApplyPropertyValue(Inline.TextDecorationsProperty, decorations.Count == 0 ? null : decorations);
+         //if (HasDecorationLocation(decorations, TextDecorationLocation.Strikethrough))
+         //   RemoveDecorationLocation(decorations, TextDecorationLocation.Strikethrough);
+         //else
+         //{
+         //   foreach (var d in TextDecorations.Strikethrough)
+         //      decorations.Add(d.Clone());
+         //}
 
-         var caret = range.End.GetInsertionPosition(LogicalDirection.Forward) ?? range.End;
-         txtNoteContent.Selection.Select(caret, caret);
-         new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+         //range.ApplyPropertyValue(Inline.TextDecorationsProperty, decorations.Count == 0 ? null : decorations);
 
-         NoteTextChanged?.Invoke(this, EventArgs.Empty);
+         //var caret = range.End.GetInsertionPosition(LogicalDirection.Forward) ?? range.End;
+         //txtNoteContent.Selection.Select(caret, caret);
+         //new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+
+         //NoteTextChanged?.Invoke(this, EventArgs.Empty);
       }
 
       private void NoteContextMenu_Opened(object sender, RoutedEventArgs e)
@@ -2930,35 +2944,35 @@ namespace StickIt
          return new TextRange(paragraph.ContentStart, end);
       }
 
-      private void CleanupStrikethroughOnEmptyParagraphs()
-      {
-         if (txtNoteContent?.Document == null)
-            return;
+      //private void CleanupStrikethroughOnEmptyParagraphs()
+      //{
+      //   if (txtNoteContent?.Document == null)
+      //      return;
 
-         bool changed = false;
+      //   bool changed = false;
 
-         foreach (var paragraph in txtNoteContent.Document.Blocks.OfType<Paragraph>())
-         {
-            if (!string.IsNullOrWhiteSpace(GetParagraphText(paragraph)))
-               continue;
+      //   foreach (var paragraph in txtNoteContent.Document.Blocks.OfType<Paragraph>())
+      //   {
+      //      if (!string.IsNullOrWhiteSpace(GetParagraphText(paragraph)))
+      //         continue;
 
-            var range = GetParagraphContentRange(paragraph);
-            var decorations = GetDecorationsOrEmpty(range.GetPropertyValue(Inline.TextDecorationsProperty));
-            if (!HasDecorationLocation(decorations, TextDecorationLocation.Strikethrough))
-               continue;
+      //      var range = GetParagraphContentRange(paragraph);
+      //      var decorations = GetDecorationsOrEmpty(range.GetPropertyValue(Inline.TextDecorationsProperty));
+      //      if (!HasDecorationLocation(decorations, TextDecorationLocation.Strikethrough))
+      //         continue;
 
-            RemoveDecorationLocation(decorations, TextDecorationLocation.Strikethrough);
-            range.ApplyPropertyValue(Inline.TextDecorationsProperty, decorations.Count == 0 ? null : decorations);
-            changed = true;
-         }
+      //      RemoveDecorationLocation(decorations, TextDecorationLocation.Strikethrough);
+      //      range.ApplyPropertyValue(Inline.TextDecorationsProperty, decorations.Count == 0 ? null : decorations);
+      //      changed = true;
+      //   }
 
-         if (changed)
-         {
-            var caret = txtNoteContent.CaretPosition;
-            if (caret != null)
-               new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
-         }
-      }
+      //   if (changed)
+      //   {
+      //      var caret = txtNoteContent.CaretPosition;
+      //      if (caret != null)
+      //         new TextRange(caret, caret).ApplyPropertyValue(Inline.TextDecorationsProperty, null);
+      //   }
+      //}
 
       private string GetParagraphText(Paragraph paragraph)
       {
@@ -3140,6 +3154,7 @@ namespace StickIt
          _autoListNumberSuffix = string.IsNullOrWhiteSpace(prefs.AutoListNumberSuffix) ? "." : prefs.AutoListNumberSuffix;
          _autoListBulletTemplateRtf = prefs.AutoListBulletTemplateRtf;
          _autoListNumberTemplateRtf = prefs.AutoListNumberTemplateRtf;
+         _todoTemplateRtf = prefs.TodoTemplateRtf;
          _enableTodoTitleTrigger = prefs.EnableTodoTitleTrigger;
          if (!_enableTodoTitleTrigger)
          {

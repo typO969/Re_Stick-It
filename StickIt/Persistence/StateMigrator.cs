@@ -126,6 +126,10 @@ namespace StickIt.Persistence
 
 			if (string.IsNullOrWhiteSpace(prefs.SyncDeviceId))
 				prefs.SyncDeviceId = Guid.NewGuid().ToString("N");
-		}
+         if (string.IsNullOrWhiteSpace(prefs.TodoTemplateRtf))
+         {
+            prefs.TodoTemplateRtf = RtfCodec.FromPlainText("• [ ] Task 1\n• [ ] Task 2\n• [ ] Task 3", prefs.BodyFontSize > 0 ? prefs.BodyFontSize : 14.0);
+         }
+      }
 	}
 }

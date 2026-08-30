@@ -72,7 +72,10 @@ namespace StickIt
 			{
 				SetRichText(BulletListSandbox, _viewModel.AutoListBulletTemplateRtf, "• Task item");
 				SetRichText(NumberListSandbox, _viewModel.AutoListNumberTemplateRtf, "1. Numbered item");
-			}
+
+            if (FindName("TodoTemplateSandbox") is System.Windows.Controls.RichTextBox todoBox)
+               SetRichText(todoBox, _viewModel.TodoTemplateRtf, "• [ ] Task 1\n• [ ] Task 2");
+         }
 			finally
 			{
 				_suppressSandboxSync = false;
@@ -83,9 +86,19 @@ namespace StickIt
 		{
 			_viewModel.AutoListBulletTemplateRtf = GetRichText(BulletListSandbox);
 			_viewModel.AutoListNumberTemplateRtf = GetRichText(NumberListSandbox);
-		}
 
-		private static void SetRichText(System.Windows.Controls.RichTextBox box, string? rtf, string fallback)
+         if (FindName("TodoTemplateSandbox") is System.Windows.Controls.RichTextBox todoBox)
+            _viewModel.TodoTemplateRtf = GetRichText(todoBox);
+      }
+
+      private void TodoTemplateSandbox_TextChanged(object sender, TextChangedEventArgs e)
+      {
+         if (_suppressSandboxSync) return;
+         if (sender is System.Windows.Controls.RichTextBox todoBox)
+            _viewModel.TodoTemplateRtf = GetRichText(todoBox);
+      }
+
+      private static void SetRichText(System.Windows.Controls.RichTextBox box, string? rtf, string fallback)
 		{
 			box.Document.Blocks.Clear();
 			if (string.IsNullOrWhiteSpace(rtf))
@@ -175,7 +188,8 @@ namespace StickIt
 			}
 		}
 
-		private static string? GetPreferredSyncBrowseDirectory()
+
+      private static string? GetPreferredSyncBrowseDirectory()
 		{
 			foreach (var candidate in GetCloudSyncFolderCandidates())
 			{
@@ -233,7 +247,10 @@ namespace StickIt
 		{
          ExecuteSync(AppInstance.TryPushToSync, "Sync");
 		}
-	}
+	
+
+   
+   }
 
 	public sealed class PreferencesViewModel : INotifyPropertyChanged
 	{
@@ -303,7 +320,8 @@ namespace StickIt
 		public string AutoListNumberSuffix { get => _autoListNumberSuffix; set => SetField(ref _autoListNumberSuffix, value); }
       public string AutoListBulletTemplateRtf { get => _autoListBulletTemplateRtf; set => SetField(ref _autoListBulletTemplateRtf, value); }
 		public string AutoListNumberTemplateRtf { get => _autoListNumberTemplateRtf; set => SetField(ref _autoListNumberTemplateRtf, value); }
-		public bool EnableTodoTitleTrigger { get => _enableTodoTitleTrigger; set => SetField(ref _enableTodoTitleTrigger, value); }
+      public string TodoTemplateRtf { get => _todoTemplateRtf; set => SetField(ref _todoTemplateRtf, value); }
+      public bool EnableTodoTitleTrigger { get => _enableTodoTitleTrigger; set => SetField(ref _enableTodoTitleTrigger, value); }
 		public ObservableCollection<string> AutoListBulletSymbols { get; }
 		public ObservableCollection<int> AutoListSpacingOptions { get; }
 		public ObservableCollection<string> AutoListNumberSuffixes { get; }
@@ -384,8 +402,9 @@ namespace StickIt
 		private double? _desktopAreaHeight;
 		private string _desktopAreaSummary = "Not set";
 		private string _lastSyncSummary = "Never";
+      private string _todoTemplateRtf = string.Empty;
 
-		public event PropertyChangedEventHandler? PropertyChanged;
+      public event PropertyChangedEventHandler? PropertyChanged;
 
 		private PreferencesViewModel()
 		{
@@ -472,7 +491,9 @@ namespace StickIt
 			vm.RefreshDesktopAreaSummary();
         vm.RefreshLastSyncSummary();
         vm.RefreshAutoListSample();
-			return vm;
+         vm.TodoTemplateRtf = prefs.TodoTemplateRtf;
+
+         return vm;
 		}
 
 		public AppPreferences ToPreferences()
@@ -521,8 +542,9 @@ namespace StickIt
 				DesktopAreaLeft = DesktopAreaLeft,
 				DesktopAreaTop = DesktopAreaTop,
 				DesktopAreaWidth = DesktopAreaWidth,
-				DesktopAreaHeight = DesktopAreaHeight
-			};
+				DesktopAreaHeight = DesktopAreaHeight,
+            TodoTemplateRtf = TodoTemplateRtf
+         };
 		}
 
 		public void RefreshDesktopAreaSummary()
