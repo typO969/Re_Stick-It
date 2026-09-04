@@ -1376,6 +1376,21 @@ namespace StickIt
          StopHook();
       }
 
+      private void Menu_About(object sender, RoutedEventArgs e)
+      {
+         var aboutDlg = new aboutWindow
+         {
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Topmost = true
+         };
+
+         // Force exact center of the Primary Windows Monitor
+         aboutDlg.Left = (SystemParameters.PrimaryScreenWidth - aboutDlg.Width) / 2;
+         aboutDlg.Top = (SystemParameters.PrimaryScreenHeight - aboutDlg.Height) / 2;
+
+         aboutDlg.ShowDialog();
+      }
+
       private void Menu_Exit(object sender, RoutedEventArgs e)
       {
          AppInstance.ShutdownRequested();
@@ -1643,6 +1658,7 @@ namespace StickIt
 
          var deco = sel.GetPropertyValue(Inline.TextDecorationsProperty);
          bool underline = HasDecorationLocation(GetDecorationsOrEmpty(deco), TextDecorationLocation.Underline);
+         bool strikethrough = HasDecorationLocation(GetDecorationsOrEmpty(deco), TextDecorationLocation.Strikethrough);
 
          System.Windows.Media.Color color = System.Windows.Media.Colors.Black;
          if (fg is SolidColorBrush brush)
@@ -1657,6 +1673,7 @@ namespace StickIt
             IsBold = bold,
             IsItalic = italic,
             IsUnderline = underline,
+            IsStrikeThrough = strikethrough,
             Color = color,
             LineHeightMultiplier = _note?.LineHeightMultiplier ?? _lineHeightMultiplier,
             ApplyToSelection = true
@@ -1701,7 +1718,16 @@ namespace StickIt
          range.ApplyPropertyValue(TextElement.FontSizeProperty, normalizedFontSize);
          range.ApplyPropertyValue(TextElement.FontWeightProperty, settings.IsBold ? FontWeights.Bold : FontWeights.Normal);
          range.ApplyPropertyValue(TextElement.FontStyleProperty, settings.IsItalic ? FontStyles.Italic : FontStyles.Normal);
-         range.ApplyPropertyValue(Inline.TextDecorationsProperty, settings.IsUnderline ? TextDecorations.Underline : null);
+         TextDecorationCollection? decorations = null;
+         if (settings.IsUnderline || settings.IsStrikeThrough)
+         {
+            decorations = new TextDecorationCollection();
+            if (settings.IsUnderline)
+               foreach (var d in TextDecorations.Underline) decorations.Add(d.Clone());
+            if (settings.IsStrikeThrough)
+               foreach (var d in TextDecorations.Strikethrough) decorations.Add(d.Clone());
+         }
+         range.ApplyPropertyValue(Inline.TextDecorationsProperty, decorations);
          range.ApplyPropertyValue(TextElement.ForegroundProperty, new SolidColorBrush(settings.Color));
 
          if (_note != null)
@@ -1845,18 +1871,18 @@ namespace StickIt
             if (newY > overlapMaxY) newY = overlapMaxY;
          }
 
-         // Clamp to virtual desktop in physical pixels so it can’t disappear
-         var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
+         //// Clamp to virtual desktop in physical pixels so it can’t disappear
+         //var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
 
-         int minX = vs.Left;
-         int minY = vs.Top;
-         int maxX = vs.Right - noteWidthPx;
-         int maxY = vs.Bottom - noteHeightPx;
+         //int minX = vs.Left;
+         //int minY = vs.Top;
+         //int maxX = vs.Right - noteWidthPx;
+         //int maxY = vs.Bottom - noteHeightPx;
 
-         if (newX < minX) newX = minX;
-         if (newY < minY) newY = minY;
-         if (newX > maxX) newX = maxX;
-         if (newY > maxY) newY = maxY;
+         //if (newX < minX) newX = minX;
+         //if (newY < minY) newY = minY;
+         //if (newX > maxX) newX = maxX;
+         //if (newY > maxY) newY = maxY;
 
          var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
          var insertAfter = IsDesktopLikeTarget(_stickyTarget) ? IntPtr.Zero : _stickyTarget.Hwnd;

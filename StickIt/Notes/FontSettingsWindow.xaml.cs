@@ -47,13 +47,14 @@ namespace StickIt
 		public bool IsBold { get; set; }
 		public bool IsItalic { get; set; }
 		public bool IsUnderline { get; set; }
-		public System.Windows.Media.Color Color { get; set; } = System.Windows.Media.Colors.Black;
+      public bool IsStrikeThrough { get; set; }
+      public System.Windows.Media.Color Color { get; set; } = System.Windows.Media.Colors.Black;
 		public bool ApplyToSelection { get; set; } = true;
 		public bool ApplyToEntireNote { get; set; }
      public double LineHeightMultiplier { get; set; } = 1.0;
      public bool SetAsDefaultForNewNotes { get; set; }
 		public bool ApplyToAllOpenNotes { get; set; }
-	}
+   }
 
 	public sealed class FontSettingsViewModel : INotifyPropertyChanged
 	{
@@ -69,7 +70,8 @@ namespace StickIt
 		public bool IsBold { get => _isBold; set => SetField(ref _isBold, value); }
 		public bool IsItalic { get => _isItalic; set => SetField(ref _isItalic, value); }
 		public bool IsUnderline { get => _isUnderline; set => SetField(ref _isUnderline, value); }
-		public ColorItem SelectedColor { get => _selectedColor; set => SetField(ref _selectedColor, value); }
+      public bool IsStrikeThrough { get => _isStrikeThrough; set => SetField(ref _isStrikeThrough, value); }
+      public ColorItem SelectedColor { get => _selectedColor; set => SetField(ref _selectedColor, value); }
 		public double LineHeightMultiplier { get => _lineHeightMultiplier; set => SetField(ref _lineHeightMultiplier, value); }
 
 		public bool ApplyToSelection
@@ -131,14 +133,25 @@ namespace StickIt
 
 		public FontWeight PreviewFontWeight => IsBold ? FontWeights.Bold : FontWeights.Normal;
 		public System.Windows.FontStyle PreviewFontStyle => IsItalic ? FontStyles.Italic : FontStyles.Normal;
-		public TextDecorationCollection? PreviewTextDecorations => IsUnderline ? TextDecorations.Underline : null;
+      public TextDecorationCollection? PreviewTextDecorations
+      {
+         get
+         {
+            if (!IsUnderline && !IsStrikeThrough) return null;
+            var col = new TextDecorationCollection();
+            if (IsUnderline) foreach (var d in TextDecorations.Underline) col.Add(d);
+            if (IsStrikeThrough) foreach (var d in TextDecorations.Strikethrough) col.Add(d);
+            return col;
+         }
+      }
 
-		private System.Windows.Media.FontFamily _fontFamily = new("Segoe UI");
+      private System.Windows.Media.FontFamily _fontFamily = new("Segoe UI");
 		private double _fontSize = 14.0;
 		private bool _isBold;
 		private bool _isItalic;
 		private bool _isUnderline;
-		private ColorItem _selectedColor = ColorItem.FromColor("Black", System.Windows.Media.Colors.Black);
+      private bool _isStrikeThrough;
+      private ColorItem _selectedColor = ColorItem.FromColor("Black", System.Windows.Media.Colors.Black);
     private double _lineHeightMultiplier = 1.0;
 		private bool _applyToSelection = true;
 		private bool _applyToEntireNote;
@@ -167,7 +180,8 @@ namespace StickIt
 			vm.IsBold = settings.IsBold;
 			vm.IsItalic = settings.IsItalic;
 			vm.IsUnderline = settings.IsUnderline;
-       vm.LineHeightMultiplier = settings.LineHeightMultiplier > 0 ? settings.LineHeightMultiplier : 1.0;
+         vm.IsStrikeThrough = settings.IsStrikeThrough;
+         vm.LineHeightMultiplier = settings.LineHeightMultiplier > 0 ? settings.LineHeightMultiplier : 1.0;
 			vm.ApplyToSelection = settings.ApplyToSelection;
 			vm.ApplyToEntireNote = settings.ApplyToEntireNote;
 			vm.SetAsDefaultForNewNotes = settings.SetAsDefaultForNewNotes;
@@ -186,7 +200,8 @@ namespace StickIt
 				IsBold = IsBold,
 				IsItalic = IsItalic,
 				IsUnderline = IsUnderline,
-				Color = SelectedColor.Color,
+            IsStrikeThrough = IsStrikeThrough,
+            Color = SelectedColor.Color,
             LineHeightMultiplier = LineHeightMultiplier,
 				ApplyToSelection = ApplyToSelection,
            ApplyToEntireNote = ApplyToEntireNote,
@@ -210,10 +225,10 @@ namespace StickIt
 				OnPropertyChanged(nameof(PreviewFontWeight));
 			if (name == nameof(IsItalic))
 				OnPropertyChanged(nameof(PreviewFontStyle));
-			if (name == nameof(IsUnderline))
-				OnPropertyChanged(nameof(PreviewTextDecorations));
+         if (name == nameof(IsUnderline) || name == nameof(IsStrikeThrough))
+            OnPropertyChanged(nameof(PreviewTextDecorations));
 
-			return true;
+         return true;
 		}
 
 		private void ApplyFontFamilyFilter()

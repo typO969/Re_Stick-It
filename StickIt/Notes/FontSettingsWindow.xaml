@@ -1,257 +1,257 @@
 <Window
-    x:Class="StickIt.FontSettingsWindow"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:conv="clr-namespace:StickIt.Converters"
-    Title="Font settings"
-    Width="549"
-    Height="589"
-    MinWidth="480"
-    MinHeight="380"
-    Background="{DynamicResource AppBackgroundBrush}"
-    Foreground="{DynamicResource AppForegroundBrush}"
-    ShowInTaskbar="False"
-    WindowStartupLocation="CenterOwner">
-    <Grid Margin="12,12,12,12" Background="{DynamicResource AppBackgroundBrush}">
-        <Grid.Resources>
-            <conv:SliderDefaultPositionConverter x:Key="SliderDefaultPositionConverter" />
-            <conv:LineHeightMultiplierConverter x:Key="LineHeightMultiplierConverter" />
-        </Grid.Resources>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="23.014" />
-            <RowDefinition Height="3.946" />
-            <RowDefinition Height="6" />
-        </Grid.RowDefinitions>
+   x:Class="StickIt.FontSettingsWindow"
+   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+   xmlns:conv="clr-namespace:StickIt.Converters"
+   Title="Font settings"
+   Width="549"
+   Height="589"
+   MinWidth="480"
+   MinHeight="380"
+   Background="{DynamicResource AppBackgroundBrush}"
+   Foreground="{DynamicResource AppForegroundBrush}"
+   ShowInTaskbar="False"
+   WindowStartupLocation="CenterOwner">
+   <Grid Margin="12,12,12,12" Background="{DynamicResource AppBackgroundBrush}">
+      <Grid.Resources>
+         <conv:SliderDefaultPositionConverter x:Key="SliderDefaultPositionConverter" />
+         <conv:LineHeightMultiplierConverter x:Key="LineHeightMultiplierConverter" />
+      </Grid.Resources>
+      <Grid.RowDefinitions>
+         <RowDefinition Height="Auto" />
+         <RowDefinition Height="*" />
+         <RowDefinition Height="23.014" />
+         <RowDefinition Height="3.946" />
+         <RowDefinition Height="6" />
+      </Grid.RowDefinitions>
 
-        <TextBlock
+      <TextBlock
+         Margin="0,0,0,10"
+         FontSize="16"
+         FontWeight="SemiBold"
+         Text="Font settings" />
+
+      <StackPanel Grid.RowSpan="2" Margin="0,31,0,0">
+         <GroupBox Margin="0,0,0,10" Header="Font">
+            <Grid Margin="10">
+               <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+               </Grid.RowDefinitions>
+               <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="120" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="90" />
+               </Grid.ColumnDefinitions>
+
+               <TextBlock
+                  Grid.Row="0"
+                  VerticalAlignment="Center"
+                  Text="Family:" />
+               <ComboBox
+                  Grid.Row="0"
+                  Grid.Column="1"
+                  Margin="0,0,8,0"
+                  DisplayMemberPath="Source"
+                  ItemsSource="{Binding FontFamilies}"
+                  SelectedItem="{Binding FontFamily}" />
+               <ComboBox
+                  Grid.Row="0"
+                  Grid.Column="2"
+                  ItemsSource="{Binding FontSizes}"
+                  SelectedItem="{Binding FontSize}" />
+
+               <CheckBox
+                  Grid.Row="1"
+                  Grid.Column="1"
+                  Grid.ColumnSpan="2"
+                  Margin="0,8,0,0"
+                  Content="Handwritten note look (bundled fonts)"
+                  IsChecked="{Binding HandwrittenNoteLook}" />
+
+               <TextBlock
+                  Grid.Row="2"
+                  Margin="0,8,0,0"
+                  VerticalAlignment="Center"
+                  Text="Style:" />
+               <StackPanel
+                  Grid.Row="2"
+                  Grid.Column="1"
+                  Grid.ColumnSpan="2"
+                  Margin="0,8,0,0"
+                  Orientation="Horizontal">
+                  <CheckBox
+                     Margin="0,0,12,0"
+                     Content="Bold"
+                     IsChecked="{Binding IsBold}" />
+                  <CheckBox
+                     Margin="0,0,12,0"
+                     Content="Italic"
+                     IsChecked="{Binding IsItalic}" />
+                  <CheckBox Content="Underline" IsChecked="{Binding IsUnderline}" />
+                  <CheckBox Content="Strikethrough" IsChecked="{Binding IsStrikeThrough}" />
+               </StackPanel>
+
+               <TextBlock
+                  Grid.Row="3"
+                  Margin="0,8,0,0"
+                  VerticalAlignment="Center"
+                  Text="Color:" />
+               <ComboBox
+                  Grid.Row="3"
+                  Grid.Column="1"
+                  Grid.ColumnSpan="2"
+                  Margin="0,8,0,0"
+                  ItemsSource="{Binding Colors}"
+                  SelectedItem="{Binding SelectedColor}">
+                  <ComboBox.ItemTemplate>
+                     <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                           <Border
+                              Width="14"
+                              Height="14"
+                              Margin="0,0,6,0"
+                              Background="{Binding Brush}"
+                              BorderBrush="{DynamicResource AppBorderBrush}"
+                              BorderThickness="1" />
+                           <TextBlock Text="{Binding Name}" />
+                        </StackPanel>
+                     </DataTemplate>
+                  </ComboBox.ItemTemplate>
+               </ComboBox>
+
+               <TextBlock
+                  Grid.Row="4"
+                  Margin="0,8,0,0"
+                  VerticalAlignment="Center"
+                  Text="Leading:" />
+               <Grid
+                  Grid.Row="4"
+                  Grid.Column="1"
+                  Grid.ColumnSpan="2"
+                  Margin="0,8,0,0">
+                  <Grid.ColumnDefinitions>
+                     <ColumnDefinition Width="Auto" />
+                     <ColumnDefinition Width="*" />
+                     <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <TextBlock
+                     Grid.Column="0"
+                     Margin="0,0,6,0"
+                     VerticalAlignment="Center"
+                     FontSize="10"
+                     Text="min." />
+                  <Grid Grid.Column="1">
+                     <Slider
+                        x:Name="FontSettingsLeadingSlider"
+                        IsSnapToTickEnabled="True"
+                        Maximum="1.8"
+                        Minimum="0.9"
+                        TickFrequency="0.05"
+                        Value="{Binding LineHeightMultiplier}" />
+                     <Border
+                        Margin="0,0,0,4"
+                        VerticalAlignment="Bottom"
+                        IsHitTestVisible="False">
+                        <TextBlock
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           Text="•">
+                           <TextBlock.Margin>
+                              <MultiBinding Converter="{StaticResource SliderDefaultPositionConverter}">
+                                 <Binding Path="ActualWidth" Source="{x:Reference FontSettingsLeadingSlider}" />
+                                 <Binding Path="Minimum" Source="{x:Reference FontSettingsLeadingSlider}" />
+                                 <Binding Path="Maximum" Source="{x:Reference FontSettingsLeadingSlider}" />
+                                 <Binding Source="1.0" />
+                              </MultiBinding>
+                           </TextBlock.Margin>
+                        </TextBlock>
+                     </Border>
+                  </Grid>
+                  <TextBlock
+                     Grid.Column="2"
+                     Margin="6,0,0,0"
+                     VerticalAlignment="Center"
+                     FontSize="10"
+                     Text="max" />
+               </Grid>
+            </Grid>
+         </GroupBox>
+
+         <GroupBox
+            Height="130"
             Margin="0,0,0,10"
-            FontSize="16"
-            FontWeight="SemiBold"
-            Text="Font settings" />
+            Header="Apply">
+            <StackPanel Margin="10">
+               <RadioButton Content="Apply to selection" IsChecked="{Binding ApplyToSelection}" />
+               <RadioButton Content="Apply to entire note" IsChecked="{Binding ApplyToEntireNote}" />
+               <RadioButton Content="Set as defaults for this note" IsChecked="{Binding ApplyToDefaults}" />
+               <CheckBox
+                  Margin="0,8,0,0"
+                  Content="Set as default for all new notes"
+                  IsChecked="{Binding SetAsDefaultForNewNotes}" />
+               <CheckBox Content="Apply font changes to all open notes" IsChecked="{Binding ApplyToAllOpenNotes}" />
+            </StackPanel>
+         </GroupBox>
 
-        <StackPanel Grid.RowSpan="2" Margin="0,31,0,0">
-            <GroupBox Margin="0,0,0,10" Header="Font">
-                <Grid Margin="10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="120" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="90" />
-                    </Grid.ColumnDefinitions>
+         <GroupBox Height="112" Header="Preview">
+            <Border
+               Margin="10"
+               Padding="10"
+               Background="{DynamicResource AppPanelBrush}"
+               BorderBrush="{DynamicResource AppBorderBrush}"
+               BorderThickness="1">
+               <TextBlock
+                  x:Name="tbPreview"
+                  FontFamily="{Binding FontFamily}"
+                  FontSize="{Binding FontSize}"
+                  FontStyle="{Binding PreviewFontStyle}"
+                  FontWeight="{Binding PreviewFontWeight}"
+                  Foreground="{Binding SelectedColor.Brush}"
+                  LineStackingStrategy="BlockLineHeight"
+                  TextDecorations="{Binding PreviewTextDecorations}">
+                  <TextBlock.LineHeight>
+                     <MultiBinding Converter="{StaticResource LineHeightMultiplierConverter}">
+                        <Binding Path="FontSize" />
+                        <Binding Path="LineHeightMultiplier" />
+                     </MultiBinding>
+                  </TextBlock.LineHeight>
+                  The quick brown fox jumps over the lazy dog.<LineBreak />
+                  The quick brown fox jumps over the lazy dog.</TextBlock>
+            </Border>
+         </GroupBox>
+      </StackPanel>
 
-                    <TextBlock
-                        Grid.Row="0"
-                        VerticalAlignment="Center"
-                        Text="Family:" />
-                    <ComboBox
-                        Grid.Row="0"
-                        Grid.Column="1"
-                        Margin="0,0,8,0"
-                        DisplayMemberPath="Source"
-                        ItemsSource="{Binding FontFamilies}"
-                        SelectedItem="{Binding FontFamily}" />
-                    <ComboBox
-                        Grid.Row="0"
-                        Grid.Column="2"
-                        ItemsSource="{Binding FontSizes}"
-                        SelectedItem="{Binding FontSize}" />
+      <StackPanel
+         Grid.Row="2"
+         Grid.RowSpan="3"
+         Margin="0,10,0,0"
+         HorizontalAlignment="Right"
+         Orientation="Horizontal">
 
-                    <CheckBox
-                        Grid.Row="1"
-                        Grid.Column="1"
-                        Grid.ColumnSpan="2"
-                        Margin="0,8,0,0"
-                        Content="Handwritten note look (bundled fonts)"
-                        IsChecked="{Binding HandwrittenNoteLook}" />
+         <Button
+            Width="52"
+            MinWidth="60"
+            Margin="0,0,8,0"
+            Click="Cancel_Click"
+            Content="Cancel"
+            FontFamily="Helvetica"
+            FontStyle="Italic" />
+         <Button
+            Width="112"
+            MinWidth="90"
+            BorderBrush="#FF1C1C1C"
+            BorderThickness="2,2,2,2"
+            Click="Ok_Click"
+            Content="OK"
+            FontFamily="Helvetica"
+            FontSize="14"
+            FontWeight="Bold"
+            IsDefault="True" />
 
-                    <TextBlock
-                        Grid.Row="2"
-                        Margin="0,8,0,0"
-                        VerticalAlignment="Center"
-                        Text="Style:" />
-                    <StackPanel
-                        Grid.Row="2"
-                        Grid.Column="1"
-                        Grid.ColumnSpan="2"
-                        Margin="0,8,0,0"
-                        Orientation="Horizontal">
-                        <CheckBox
-                            Margin="0,0,12,0"
-                            Content="Bold"
-                            IsChecked="{Binding IsBold}" />
-                        <CheckBox
-                            Margin="0,0,12,0"
-                            Content="Italic"
-                            IsChecked="{Binding IsItalic}" />
-                        <CheckBox Content="Underline" IsChecked="{Binding IsUnderline}" />
-                        <!--<CheckBox Content="Strikethrough" IsChecked="{Binding IsStrikeThrough}" />-->
-                    </StackPanel>
-
-                    <TextBlock
-                        Grid.Row="3"
-                        Margin="0,8,0,0"
-                        VerticalAlignment="Center"
-                        Text="Color:" />
-                    <ComboBox
-                        Grid.Row="3"
-                        Grid.Column="1"
-                        Grid.ColumnSpan="2"
-                        Margin="0,8,0,0"
-                        ItemsSource="{Binding Colors}"
-                        SelectedItem="{Binding SelectedColor}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Border
-                                        Width="14"
-                                        Height="14"
-                                        Margin="0,0,6,0"
-                                        Background="{Binding Brush}"
-                                        BorderBrush="{DynamicResource AppBorderBrush}"
-                                        BorderThickness="1" />
-                                    <TextBlock Text="{Binding Name}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-
-                    <TextBlock
-                        Grid.Row="4"
-                        Margin="0,8,0,0"
-                        VerticalAlignment="Center"
-                        Text="Leading:" />
-                    <Grid
-                        Grid.Row="4"
-                        Grid.Column="1"
-                        Grid.ColumnSpan="2"
-                        Margin="0,8,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Grid.Column="0"
-                            Margin="0,0,6,0"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            Text="min." />
-                        <Grid Grid.Column="1">
-                            <Slider
-                                x:Name="FontSettingsLeadingSlider"
-                                IsSnapToTickEnabled="True"
-                                Maximum="1.8"
-                                Minimum="0.9"
-                                TickFrequency="0.05"
-                                Value="{Binding LineHeightMultiplier}" />
-                            <Border
-                                Margin="0,0,0,4"
-                                VerticalAlignment="Bottom"
-                                IsHitTestVisible="False">
-                                <TextBlock
-                                    FontSize="10"
-                                    FontWeight="SemiBold"
-                                    Text="•">
-                                    <TextBlock.Margin>
-                                        <MultiBinding Converter="{StaticResource SliderDefaultPositionConverter}">
-                                            <Binding Path="ActualWidth" Source="{x:Reference FontSettingsLeadingSlider}" />
-                                            <Binding Path="Minimum" Source="{x:Reference FontSettingsLeadingSlider}" />
-                                            <Binding Path="Maximum" Source="{x:Reference FontSettingsLeadingSlider}" />
-                                            <Binding Source="1.0" />
-                                        </MultiBinding>
-                                    </TextBlock.Margin>
-                                </TextBlock>
-                            </Border>
-                        </Grid>
-                        <TextBlock
-                            Grid.Column="2"
-                            Margin="6,0,0,0"
-                            VerticalAlignment="Center"
-                            FontSize="10"
-                            Text="max" />
-                    </Grid>
-                </Grid>
-            </GroupBox>
-
-            <GroupBox
-                Height="130"
-                Margin="0,0,0,10"
-                Header="Apply">
-                <StackPanel Margin="10">
-                    <RadioButton Content="Apply to selection" IsChecked="{Binding ApplyToSelection}" />
-                    <RadioButton Content="Apply to entire note" IsChecked="{Binding ApplyToEntireNote}" />
-                    <RadioButton Content="Set as defaults for this note" IsChecked="{Binding ApplyToDefaults}" />
-                    <CheckBox
-                        Margin="0,8,0,0"
-                        Content="Set as default for all new notes"
-                        IsChecked="{Binding SetAsDefaultForNewNotes}" />
-                    <CheckBox Content="Apply font changes to all open notes" IsChecked="{Binding ApplyToAllOpenNotes}" />
-                </StackPanel>
-            </GroupBox>
-
-            <GroupBox Height="112" Header="Preview">
-                <Border
-                    Margin="10"
-                    Padding="10"
-                    Background="{DynamicResource AppPanelBrush}"
-                    BorderBrush="{DynamicResource AppBorderBrush}"
-                    BorderThickness="1">
-                    <TextBlock
-                        x:Name="tbPreview"
-                        FontFamily="{Binding FontFamily}"
-                        FontSize="{Binding FontSize}"
-                        FontStyle="{Binding PreviewFontStyle}"
-                        FontWeight="{Binding PreviewFontWeight}"
-                        Foreground="{Binding SelectedColor.Brush}"
-                        LineStackingStrategy="BlockLineHeight"
-                        TextDecorations="{Binding PreviewTextDecorations}">
-                        <TextBlock.LineHeight>
-                            <MultiBinding Converter="{StaticResource LineHeightMultiplierConverter}">
-                                <Binding Path="FontSize" />
-                                <Binding Path="LineHeightMultiplier" />
-                            </MultiBinding>
-                        </TextBlock.LineHeight>
-                        The quick brown fox jumps over the lazy dog.<LineBreak />
-                        The quick brown fox jumps over the lazy dog.</TextBlock>
-                </Border>
-            </GroupBox>
-        </StackPanel>
-
-        <StackPanel
-            Grid.Row="2"
-            Grid.RowSpan="3"
-            Margin="0,10,0,0"
-            HorizontalAlignment="Right"
-            Orientation="Horizontal">
-
-            <Button
-                Width="52"
-                MinWidth="60"
-                Margin="0,0,8,0"
-                Click="Cancel_Click"
-                Content="Cancel"
-                FontFamily="Helvetica"
-                FontStyle="Italic" />
-            <Button
-                Width="112"
-                MinWidth="90"
-                BorderBrush="#FF1C1C1C"
-                BorderThickness="2,2,2,2"
-                Click="Ok_Click"
-                Content="OK"
-                FontFamily="Helvetica"
-                FontSize="14"
-                FontWeight="Bold"
-                IsDefault="True" />
-
-        </StackPanel>
-    </Grid>
+      </StackPanel>
+   </Grid>
 </Window>
