@@ -1816,6 +1816,8 @@ namespace StickIt
             TryEnterMode2DesktopFallback();
       }
 
+
+
       public bool SnapToStickyTargetNow()
       {
          if (_noteStuckMode != 2) return false;
@@ -1828,13 +1830,32 @@ namespace StickIt
          if (_stickyTarget == null || _stickyTarget.Hwnd == IntPtr.Zero)
             return false;
 
+         bool isDesktop = IsDesktopLikeTarget(_stickyTarget);
+         var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+         // If it's the desktop, the target physically cannot move. 
+         // Bypassing GetWindowRect here prevents DPI virtualization bugs from 
+         // hallucinating desktop movement when snapping/maximizing other scaled windows.
+         if (isDesktop)
+         {
+            var notePx = GetNoteTopLeftPx();
+            int currentX = (int)Math.Round(notePx.X);
+            int currentY = (int)Math.Round(notePx.Y);
+
+            // Enforce Z-order without moving it
+            StickIt.Sticky.Services.WindowMoveService.MoveWindow(myHwnd, currentX, currentY, IntPtr.Zero);
+            return true;
+         }
+
+         // --- LOGIC FOR NON-DESKTOP TARGETS BELOW ---
+
          // Target rect (pixels)
          if (!StickIt.Sticky.Services.WindowRectService.TryGetWindowRect(_stickyTarget.Hwnd, out var tr))
             return false;
 
          // Skip work if target didn’t move (pixel compare)
          if (_lastTargetX.HasValue && _lastTargetY.HasValue &&
-            _lastTargetX.Value == tr.X && _lastTargetY.Value == tr.Y)
+             _lastTargetX.Value == tr.X && _lastTargetY.Value == tr.Y)
          {
             return true;
          }
@@ -1857,42 +1878,24 @@ namespace StickIt
          var noteWidthPx = (int)Math.Round(Math.Max(1, Width * Math.Max(0.01, dpi.DpiScaleX)));
          var noteHeightPx = (int)Math.Round(Math.Max(1, Height * Math.Max(0.01, dpi.DpiScaleY)));
 
-         if (!IsDesktopLikeTarget(_stickyTarget))
-         {
-            // Keep some overlap with target so note cannot drift/stick outside the host bounds.
-            int overlapMinX = (int)Math.Round(tr.X) - noteWidthPx + 1;
-            int overlapMaxX = (int)Math.Round(tr.X) + (int)Math.Max(1, Math.Round(tr.Width)) - 1;
-            int overlapMinY = (int)Math.Round(tr.Y) - noteHeightPx + 1;
-            int overlapMaxY = (int)Math.Round(tr.Y) + (int)Math.Max(1, Math.Round(tr.Height)) - 1;
+         // Keep some overlap with target so note cannot drift/stick outside the host bounds.
+         int overlapMinX = (int)Math.Round(tr.X) - noteWidthPx + 1;
+         int overlapMaxX = (int)Math.Round(tr.X) + (int)Math.Max(1, Math.Round(tr.Width)) - 1;
+         int overlapMinY = (int)Math.Round(tr.Y) - noteHeightPx + 1;
+         int overlapMaxY = (int)Math.Round(tr.Y) + (int)Math.Max(1, Math.Round(tr.Height)) - 1;
 
-            if (newX < overlapMinX) newX = overlapMinX;
-            if (newX > overlapMaxX) newX = overlapMaxX;
-            if (newY < overlapMinY) newY = overlapMinY;
-            if (newY > overlapMaxY) newY = overlapMaxY;
-         }
-
-         //// Clamp to virtual desktop in physical pixels so it can’t disappear
-         //var vs = System.Windows.Forms.SystemInformation.VirtualScreen;
-
-         //int minX = vs.Left;
-         //int minY = vs.Top;
-         //int maxX = vs.Right - noteWidthPx;
-         //int maxY = vs.Bottom - noteHeightPx;
-
-         //if (newX < minX) newX = minX;
-         //if (newY < minY) newY = minY;
-         //if (newX > maxX) newX = maxX;
-         //if (newY > maxY) newY = maxY;
-
-         var myHwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-         var insertAfter = IsDesktopLikeTarget(_stickyTarget) ? IntPtr.Zero : _stickyTarget.Hwnd;
+         if (newX < overlapMinX) newX = overlapMinX;
+         if (newX > overlapMaxX) newX = overlapMaxX;
+         if (newY < overlapMinY) newY = overlapMinY;
+         if (newY > overlapMaxY) newY = overlapMaxY;
 
          // IMPORTANT: insert-after = target hwnd, so we stay above it without being Topmost
-         WindowMoveService.MoveWindow(myHwnd, newX, newY, insertAfter);
-
+         StickIt.Sticky.Services.WindowMoveService.MoveWindow(myHwnd, newX, newY, _stickyTarget.Hwnd);
 
          return true;
       }
+
+
 
       private static bool IsDesktopLikeTarget(StickIt.Sticky.StickyTargetInfo? target)
       {
