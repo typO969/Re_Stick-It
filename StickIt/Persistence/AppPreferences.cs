@@ -65,7 +65,11 @@ namespace StickIt.Persistence
       public bool EnableTodoTitleTrigger { get; set; }
 		public bool WarnBeforeReplaceOnPull { get; set; } = true;
 
-		public bool SyncEnabled { get; set; }
+      // Default to true so people see the cool feature on update!
+      public bool EnableNoteRotation { get; set; } = true;
+      public bool EnableNoteAging { get; set; } = true;
+
+      public bool SyncEnabled { get; set; }
 		public string SyncFilePath { get; set; } = string.Empty;
 		public bool SyncPreferences { get; set; } = true;
       public SyncMode SyncMode { get; set; } = SyncMode.PreferPullFromOtherDevice;

@@ -353,6 +353,11 @@ namespace StickIt
          if (_note != null)
             _note.FontSize = size <= 0 ? 14.0 : size;
       }
+
+      public bool GetIsLocked() => _note?.IsLocked ?? false;
+
+      public double GetRotationAngle() => _note?.RotationAngle ?? 0;
+
       public string GetFontFamily() => _note?.FontFamily ?? "Helvetica";
       public double GetFontSize() => _note?.FontSize ?? 14.0;
       public double GetLineHeightMultiplier() => _note?.LineHeightMultiplier ?? _lineHeightMultiplier;
@@ -535,11 +540,8 @@ namespace StickIt
 
 
 
-
-
          UpdateStickyVisuals();
-
-
+       
          _note = note;
          DataContext = _note;
          _lineHeightMultiplier = _note?.LineHeightMultiplier ?? _lineHeightMultiplier;
@@ -610,6 +612,14 @@ namespace StickIt
             }
 
          };
+
+         Loaded += (s, e) =>
+         {
+            ApplyLockState();
+            ApplyRotation();
+            ApplyAging();
+         };
+
       }
 
       public void SetNoteId(string id) => NoteId = string.IsNullOrWhiteSpace(id) ? NoteId : id;
@@ -653,6 +663,131 @@ namespace StickIt
          try { ClearLocalAotOwner(); } catch { }
          base.OnClosed(e);
       }
+
+
+
+      private void Menu_ToggleLock(object sender, RoutedEventArgs e)
+      {
+         if (_note == null) return;
+
+         _note.IsLocked = !_note.IsLocked;
+         ApplyLockState();
+
+         AppInstance.QueueSaveFromWindow();
+      }
+
+      private void Menu_StraightenNote(object sender, RoutedEventArgs e)
+      {
+         if (_note == null) return;
+
+         // Use a microscopic non-zero value so it doesn't get re-randomized on load
+         _note.RotationAngle = 0.001;
+         ApplyRotation();
+
+         AppInstance.QueueSaveFromWindow();
+      }
+
+
+
+
+      private void ApplyLockState()
+      {
+         if (_note == null) return;
+         bool locked = _note.IsLocked;
+
+         // 1. Lock text boxes
+         if (txtNoteContent != null)
+         {
+            txtNoteContent.IsReadOnly = locked || _inkModeEnabled;
+            txtNoteContent.CaretBrush = locked ? System.Windows.Media.Brushes.Transparent : CaretBrush;
+         }
+         if (txtNoteTitle != null) txtNoteTitle.IsReadOnly = locked;
+
+         // 2. Disable ink
+         if (inkLayer != null) inkLayer.IsHitTestVisible = !locked && _inkModeEnabled;
+
+         // 3. Update context menu
+         if (miLockNote != null) miLockNote.IsChecked = locked;
+
+         // 4. HIDE THE CLOSE BUTTON SO IT CANNOT BE CLICKED!
+         if (btnClose != null)
+         {
+            btnClose.Visibility = locked ? Visibility.Collapsed : Visibility.Visible;
+         }
+      }
+
+      // Make this public so we can force live-updates from the Preferences window
+      public void ApplyRotation()
+      {
+         if (_note == null || NoteRotation == null) return;
+
+         // 1. If the user disabled the realism feature, force the angle to 0 visually
+         if (!AppInstance.Preferences.EnableNoteRotation)
+         {
+            NoteRotation.Angle = 0;
+            return; // Exit early, we don't want to change the underlying saved RotationAngle
+         }
+
+         // 2. If the feature is enabled and it's a new (or newly updated) note, randomize it
+         if (_note.RotationAngle == 0)
+         {
+            Random rnd = new Random();
+            _note.RotationAngle = (rnd.NextDouble() * 8.0) - 4.0;
+         }
+
+         // 3. Apply the angle
+         NoteRotation.Angle = _note.RotationAngle;
+      }
+
+      public void ApplyAging()
+      {
+         if (_note == null) return;
+
+         // Check if the feature is enabled and the note is at least 7 days old
+         bool isAged = AppInstance.Preferences.EnableNoteAging &&
+                      (DateTime.UtcNow - _note.Props.CreatedUtc).TotalDays >= 7.0;
+
+         if (isAged)
+         {
+            // 1. Cut the bottom-right corner off the paper (400x400)
+            var paperClip = new StreamGeometry();
+            using (var ctx = paperClip.Open())
+            {
+               ctx.BeginFigure(new System.Windows.Point(0, 0), true, true);
+               ctx.LineTo(new System.Windows.Point(400, 0), true, false);
+               ctx.LineTo(new System.Windows.Point(400, 360), true, false); // Stop 40px short
+               ctx.LineTo(new System.Windows.Point(360, 400), true, false); // Cut diagonally
+               ctx.LineTo(new System.Windows.Point(0, 400), true, false);
+            }
+            paperClip.Freeze();
+            if (NoteChrome != null) NoteChrome.Clip = paperClip;
+
+            // 2. Cut the corner off the StickyOverlay (which is 406x406 due to Margin="-3")
+            var overlayClip = new StreamGeometry();
+            using (var ctx = overlayClip.Open())
+            {
+               ctx.BeginFigure(new System.Windows.Point(0, 0), true, true);
+               ctx.LineTo(new System.Windows.Point(406, 0), true, false);
+               ctx.LineTo(new System.Windows.Point(406, 363), true, false);
+               ctx.LineTo(new System.Windows.Point(363, 406), true, false);
+               ctx.LineTo(new System.Windows.Point(0, 406), true, false);
+            }
+            overlayClip.Freeze();
+            if (StickyOverlay != null) StickyOverlay.Clip = overlayClip;
+
+            // 3. Show the folded flap
+            if (DogEarFlap != null) DogEarFlap.Visibility = Visibility.Visible;
+         } else
+         {
+            // Restore the full squares
+            if (NoteChrome != null) NoteChrome.Clip = null;
+            if (StickyOverlay != null) StickyOverlay.Clip = null;
+            if (DogEarFlap != null) DogEarFlap.Visibility = Visibility.Collapsed;
+         }
+      }
+
+
+
 
       private void TxtNoteContent_Pasting(object sender, DataObjectPastingEventArgs e)
       {

@@ -25,7 +25,11 @@ namespace StickIt.Persistence
 			else
 				m.ColorKey = NoteColors.NoteColor.ThreeMYellow;
 
-			m.FontFamily = p.FontFamily;
+         m.IsLocked = p.IsLocked;
+
+         m.RotationAngle = p.RotationAngle;
+
+         m.FontFamily = p.FontFamily;
 			m.FontSize = p.FontSize;
 			m.Props.LineHeightMultiplier = p.LineHeightMultiplier > 0 ? p.LineHeightMultiplier : m.Props.LineHeightMultiplier;
 
@@ -56,7 +60,11 @@ namespace StickIt.Persistence
 
 				ColorKey = w.GetColorKey().ToString(),
 
-				FontFamily = w.GetFontFamily(),
+            IsLocked = w.GetIsLocked(),
+
+            RotationAngle = w.GetRotationAngle(),
+
+            FontFamily = w.GetFontFamily(),
 				FontSize = w.GetFontSize(),
 				LineHeightMultiplier = w.GetLineHeightMultiplier(),
 

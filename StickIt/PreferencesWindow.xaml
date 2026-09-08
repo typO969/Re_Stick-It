@@ -88,6 +88,30 @@
                                 </StackPanel>
                             </StackPanel>
                         </GroupBox>
+
+                        <!--  Realism Features Section  -->
+                        <TextBlock
+                            Margin="0,15,0,2"
+                            FontWeight="SemiBold"
+                            Text="Realism Features" />
+                        <Border
+                            Padding="6"
+                            BorderBrush="#7F7F7F"
+                            BorderThickness="1">
+                            <StackPanel>
+                                <CheckBox
+                                    x:Name="chkEnableRotation"
+                                    Margin="0,2,0,2"
+                                    Content="Enable random note rotation (skeuomorphic tilt)"
+                                    IsChecked="{Binding EnableNoteRotation}" />
+                                <CheckBox
+                                    x:Name="chkEnableAging"
+                                    Margin="0,2,0,2"
+                                    Content="Enable dog-earring of the bottom note corner once notes reach a certin age"
+                                    IsChecked="{Binding EnableNoteAging}" />
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

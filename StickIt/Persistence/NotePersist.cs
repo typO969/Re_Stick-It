@@ -39,8 +39,13 @@ namespace StickIt.Persistence
 
 		public bool IsMinimized { get; set; } = false; // already present; keep one canonical field
 
-		// Phase-3 readiness: monitor affinity metadata for smarter multi-monitor restore.
-		public string? MonitorDeviceName { get; set; } = null;
+      // Inside the NotePersist class, add this line:
+      public bool IsLocked { get; set; } = false;
+
+      public double RotationAngle { get; set; } = 0;
+
+      // Phase-3 readiness: monitor affinity metadata for smarter multi-monitor restore.
+      public string? MonitorDeviceName { get; set; } = null;
 		public double? MonitorWorkAreaLeft { get; set; } = null;
 		public double? MonitorWorkAreaTop { get; set; } = null;
 		public double? MonitorWorkAreaWidth { get; set; } = null;

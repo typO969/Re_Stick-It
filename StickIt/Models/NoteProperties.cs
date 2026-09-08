@@ -34,8 +34,13 @@ namespace StickIt.Models
 		public double Y { get; set; }
 		public bool IsMinimized { get; set; }
 
-		// Content metadata (not content itself)
-		public int CharCount { get; set; }
+      // Inside NoteProperties class, add:
+      public bool IsLocked { get; set; }
+
+      public double RotationAngle { get; set; }
+
+      // Content metadata (not content itself)
+      public int CharCount { get; set; }
 		public int WordCount { get; set; }
 	}
 
