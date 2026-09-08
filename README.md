@@ -1,4 +1,4 @@
-# Re_Stick-It
+# re_Stick-It
 
 Lightweight desktop sticky notes for Windows, built with WPF on `.NET 8`, blah, blah, blah.
 
